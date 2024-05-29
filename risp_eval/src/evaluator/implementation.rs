@@ -34,12 +34,14 @@ impl Evaluator {
         match head {
             Object::Symbol(s) =>
                 match s.as_str() {
+                    // TODO: Add more binary operators
                     "+" | "-" | "*" | "/" | "<" | ">" | "=" | "!=" => {
                         return self.eval_binary_op(&list);
                     }
                     "define" => self.eval_define(&list),
                     "if" => self.eval_if(&list),
                     "lambda" => self.eval_lambda(&list),
+                    // TODO: Add a basic std lib
                     _ => self.eval_func_call(&s, &list),
                 }
             _ => {
