@@ -91,7 +91,14 @@ impl Evaluator {
                     "+" => Ok(Object::Integer(left_val + right_val)),
                     "-" => Ok(Object::Integer(left_val - right_val)),
                     "*" => Ok(Object::Integer(left_val * right_val)),
-                    "/" => Ok(Object::Integer(left_val / right_val)),
+                    "/" => {
+                        match right_val {
+                            0 => {
+                                return Err(format!("Division by zero"));
+                            }
+                            _ => Ok(Object::Integer(left_val / right_val)),
+                        }
+                    }
                     "<" => Ok(Object::Bool(left_val < right_val)),
                     ">" => Ok(Object::Bool(left_val > right_val)),
                     "=" => Ok(Object::Bool(left_val == right_val)),

@@ -1,7 +1,10 @@
-[package]
-name = "risp"
-version = "0.1.0"
-edition = "2021"
+# [package]
+# name = "risp"
+# version = "0.1.0"
+# edition = "2021"
 
-[dependencies]
-linefeed = "0.6.0"
+# [[bin]]
+# name = 'repl'
+# path = 'repl/src/main.rs'
+[workspace]
+members = ["repl", "risp_eval"]
