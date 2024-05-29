@@ -8,8 +8,8 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new() -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Default::default()))
     }
 
     pub fn new_scope(parent: Rc<RefCell<Env>>) -> Self {

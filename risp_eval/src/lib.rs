@@ -1,4 +1,7 @@
-pub mod lexer;
-pub mod parser;
-pub mod evaluator;
-pub mod env;
+mod lexer;
+mod parser;
+mod evaluator;
+mod env;
+
+pub use evaluator::Evaluator;
+pub use env::Env;
