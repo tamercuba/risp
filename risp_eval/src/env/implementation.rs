@@ -12,11 +12,13 @@ impl Env {
         Rc::new(RefCell::new(Default::default()))
     }
 
-    pub fn new_scope(parent: Rc<RefCell<Env>>) -> Self {
-        Env {
-            parent: Some(parent),
-            vars: HashMap::new(),
-        }
+    pub fn new_scope(parent: Rc<RefCell<Env>>) -> Rc<RefCell<Self>> {
+        Rc::new(
+            RefCell::new(Env {
+                parent: Some(parent),
+                vars: HashMap::new(),
+            })
+        )
     }
 
     pub fn remove_scope(&mut self) {
@@ -39,5 +41,9 @@ impl Env {
 
     pub fn set(&mut self, name: &str, value: Object) {
         self.vars.insert(name.to_string(), value);
+    }
+
+    pub fn vars(&self) -> &HashMap<String, Object> {
+        &self.vars
     }
 }

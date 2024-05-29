@@ -179,7 +179,7 @@ impl Evaluator {
         let func = lambda.unwrap();
         match func {
             Object::Lambda(params, body) => {
-                self.env = Rc::new(RefCell::new(Env::new_scope(self.env.clone())));
+                self.env = Env::new_scope(self.env.clone());
                 for (i, param) in params.iter().enumerate() {
                     let val = self.eval_obj(&list[i + 1])?;
                     self.env.borrow_mut().set(param, val);
