@@ -9,6 +9,7 @@ pub enum Object {
     Bool(bool),
     Symbol(String),
     Lambda(Vec<String>, Vec<Object>),
+    Function(Vec<Object>, Vec<Object>),
     List(Vec<Object>),
 }
 
@@ -29,6 +30,7 @@ impl Display for Object {
             Object::Integer(n) => write!(f, "{}", n),
             Object::Bool(b) => write!(f, "{}", b),
             Object::Symbol(s) => write!(f, "{}", s),
+            Object::Function(_, _) => Ok(()),
             Object::Lambda(params, body) => {
                 write!(f, "Lambda(")?;
                 for param in params {
