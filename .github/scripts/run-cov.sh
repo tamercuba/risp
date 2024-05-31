@@ -8,3 +8,6 @@ mkdir -p target/tarpaulin
 
 # Run cargo tarpaulin to generate coverage report in XML format
 cargo tarpaulin --lib -p risp_eval --fail-under 50 --out Xml --output-dir target/tarpaulin
+
+# Checking if coverage file exists 
+ls -la target/tarpaulin

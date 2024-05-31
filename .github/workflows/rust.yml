@@ -22,8 +22,8 @@ jobs:
       run: cargo install cargo-tarpaulin
     - name: Run tests with coverage
       run: ./.github/scripts/run-cov.sh
-    - name: Tests
-      run: cargo test --verbose
+    # - name: Tests
+    #   run: cargo test --verbose
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
       env:
