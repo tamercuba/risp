@@ -50,7 +50,7 @@ fn test_eval_with_var() {
 }
 
 #[test]
-fn test_eval_with_lambda() {
+fn test_eval_lambda_into_define() {
     let program = "
     (
      (define square (lambda (x) (* x x)))
@@ -66,4 +66,41 @@ fn test_eval_with_lambda() {
     let result = result.unwrap();
 
     assert_eq!(result, Object::List(vec![Object::Integer(100)]));
+}
+
+#[test]
+fn test_eval_function_definition() {
+    let program = "
+    (
+     (defun square (x) (* x x))
+     (square 10)
+    )
+    ";
+    let mut evaluator = Evaluator::new();
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+
+    assert_eq!(result, Object::List(vec![Object::Integer(100)]));
+}
+
+#[test]
+fn test_eval_nested_lambda() {
+    let program = "
+    (
+        ((lambda () ((lambda () ((lambda (x y) (+ x y)) 3 7)))))
+    )
+    ";
+    let mut evaluator = Evaluator::new();
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+
+    assert_eq!(result, Object::List(vec![Object::Integer(10)]));
 }
