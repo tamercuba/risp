@@ -57,7 +57,7 @@ impl Evaluator {
                         let mut params = Vec::new();
                         for param in list {
                             match param {
-                                Object::Symbol(_) => params.push(param.clone()),
+                                Object::Symbol(s) => params.push(s.clone()),
                                 _ => {
                                     return Err(format!("Invalid defun parameter"));
                                 }
@@ -181,6 +181,14 @@ impl Evaluator {
             }
         };
         let val = self.eval_obj(&list[2])?;
+        match val {
+            Object::Lambda(params, body) => {
+                self.env.borrow_mut().set(sym.as_str(), Object::Function(params, body));
+                return Ok(Object::Void);
+            }
+            _ => {}
+        }
+
         self.env.borrow_mut().set(sym.as_str(), val);
         Ok(Object::Void)
     }
@@ -243,14 +251,7 @@ impl Evaluator {
                 self.env = Env::new_scope(self.env.clone());
                 for (i, param) in params.iter().enumerate() {
                     let val = self.eval_obj(&list[i + 1])?;
-                    match param {
-                        Object::Symbol(s) => {
-                            self.env.borrow_mut().set(s, val);
-                        }
-                        _ => {
-                            return Err(format!("Invalid function parameter {param}"));
-                        }
-                    }
+                    self.env.borrow_mut().set(param.as_str(), val);
                 }
                 let result = self.eval_obj(&Object::List(body));
                 self.env.borrow_mut().remove_scope();
