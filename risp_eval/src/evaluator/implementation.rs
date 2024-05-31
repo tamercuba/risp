@@ -1,18 +1,39 @@
 use std::{ cell::RefCell, rc::Rc };
+use super::{ stdlib, SysCallWrapper };
 
-use crate::{ env::Env, parser::{ parse, Object } };
+use crate::{ env::Env, lexer::Token, parser::Object };
 
 pub struct Evaluator {
     env: Rc<RefCell<Env>>,
 }
 impl Evaluator {
-    pub fn new() -> Self {
+    pub fn new(with_stdlib: bool) -> Self {
         let env = Env::new();
-        return Evaluator { env };
+        let ev = Evaluator { env };
+        if with_stdlib {
+            ev.add_stdlib();
+        }
+        return ev;
+    }
+
+    fn add_stdlib(&self) {
+        self.env
+            .borrow_mut()
+            .set("str", Object::SysCall(SysCallWrapper::new("str", stdlib::to_str)));
+        self.env
+            .borrow_mut()
+            .set(
+                "concatenate",
+                Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str))
+            );
+        self.env
+            .borrow_mut()
+            .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)))
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
-        let parsed_list = parse(statement);
+        let tokens = Token::tokenize(statement).map_err(|e| format!("{}", e))?;
+        let parsed_list = Object::from_tokens(tokens);
         return match parsed_list {
             Ok(_) => self.eval_obj(&parsed_list.unwrap()),
             Err(_) => Err(format!("{}", parsed_list.err().unwrap())),
@@ -38,11 +59,13 @@ impl Evaluator {
                 }
             }
             Object::Void => Ok(Object::Void),
+            Object::String(s) => Ok(Object::String(s.clone())),
             Object::Function(_args, _dec) => Ok(Object::Void),
             Object::Lambda(params, body) => Ok(Object::Lambda(params.clone(), body.clone())),
             Object::Bool(_) => Ok(obj.clone()),
             Object::Integer(n) => Ok(Object::Integer(*n)),
             Object::Symbol(s) => self.eval_symbol(s),
+            _ => { Err(format!("Invalid object: {:?}", obj)) }
         }
     }
 
@@ -76,7 +99,8 @@ impl Evaluator {
                         return Err(format!("Invalid defun"));
                     }
                 };
-                self.env.borrow_mut().set(func_name.as_str(), Object::Function(params, body));
+                let f = Object::Function(params, body);
+                self.env.borrow_mut().set(func_name.as_str(), f);
                 Ok(Object::Void)
             }
             _ => {
@@ -256,6 +280,14 @@ impl Evaluator {
                 let result = self.eval_obj(&Object::List(body));
                 self.env.borrow_mut().remove_scope();
                 return result;
+            }
+            Object::SysCall(sys_call) => {
+                let mut args = Vec::new();
+                for arg in list.iter().skip(1) {
+                    let val = self.eval_obj(arg)?;
+                    args.push(val.clone());
+                }
+                return sys_call.run(&args);
             }
             _ => {
                 return Err(format!("Not a function: {}", func_name));

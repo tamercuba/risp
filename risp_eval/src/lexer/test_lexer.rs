@@ -1,9 +1,9 @@
 #[cfg(test)]
-use super::implementation::*;
+use super::implementation::Token;
 
 #[test]
 fn test_add() {
-    let tokens = tokenize("(+ 1 2)").unwrap_or(vec![]);
+    let tokens = Token::tokenize("(+ 1 2)").unwrap_or(vec![]);
     assert_eq!(
         tokens,
         vec![
@@ -11,7 +11,7 @@ fn test_add() {
             Token::Symbol("+".to_string()),
             Token::Integer(1),
             Token::Integer(2),
-            Token::RParen,
+            Token::RParen
         ]
     )
 }
@@ -25,7 +25,7 @@ fn test_area_of_a_circle() {
      (* pi (* r r))
     )
     ";
-    let tokens = tokenize(program).unwrap_or(vec![]);
+    let tokens = Token::tokenize(program).unwrap_or(vec![]);
     assert_eq!(
         tokens,
         vec![
