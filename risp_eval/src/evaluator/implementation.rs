@@ -6,8 +6,9 @@ pub struct Evaluator {
     env: Rc<RefCell<Env>>,
 }
 impl Evaluator {
-    pub fn new(env: Rc<RefCell<Env>>) -> Self {
-        Evaluator { env }
+    pub fn new() -> Self {
+        let env = Env::new();
+        return Evaluator { env };
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {

@@ -25,7 +25,7 @@ impl Display for ParserError {
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Object::Void => write!(f, "Void"),
+            Object::Void => Ok(()),
             Object::Integer(n) => write!(f, "{}", n),
             Object::Bool(b) => write!(f, "{}", b),
             Object::Symbol(s) => write!(f, "{}", s),

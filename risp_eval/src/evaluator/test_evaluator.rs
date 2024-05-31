@@ -1,11 +1,10 @@
 #[cfg(test)]
-use crate::{ env::Env, parser::Object, evaluator::Evaluator };
+use crate::{ parser::Object, evaluator::Evaluator };
 
 #[test]
 fn test_eval_add_func() {
     let program = "(+ 1 2)";
-    let env = Env::new();
-    let mut evaluator = Evaluator::new(env);
+    let mut evaluator = Evaluator::new();
 
     let result = evaluator.eval(program);
 
@@ -19,8 +18,7 @@ fn test_eval_add_func() {
 #[test]
 fn test_eval_division_by_zero() {
     let program = "(/ 1 0)";
-    let env = Env::new();
-    let mut evaluator = Evaluator::new(env);
+    let mut evaluator = Evaluator::new();
 
     let result = evaluator.eval(program);
 
@@ -40,8 +38,7 @@ fn test_eval_with_var() {
      (* pi (* r r))
     )
     ";
-    let env = Env::new();
-    let mut evaluator = Evaluator::new(env);
+    let mut evaluator = Evaluator::new();
 
     let result = evaluator.eval(program);
 
@@ -60,8 +57,7 @@ fn test_eval_with_lambda() {
      (square 10)
     )
     ";
-    let env = Env::new();
-    let mut evaluator = Evaluator::new(env);
+    let mut evaluator = Evaluator::new();
 
     let result = evaluator.eval(program);
 
