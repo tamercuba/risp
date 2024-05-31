@@ -4,7 +4,7 @@
 set -e
 
 # Run cargo tarpaulin to generate coverage report in XML format
-cargo tarpaulin --out Xml --output-dir target/tarpaulin || true
+cargo tarpaulin --lib -p risp_eval --fail-under 50 --out Xml --output-dir target/tarpaulin
 
 # Ensure the target directory exists
 mkdir -p target/tarpaulin
