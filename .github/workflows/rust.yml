@@ -24,5 +24,3 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
     - name: Run tests
       run: cargo test --verbose
-    - name: Run tests
-      run: cargo test --verbose
