@@ -11,12 +11,18 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
+    - name: Sonar Analysis
+      uses: SonarSource/sonarcloud-github-action@master
+      if: ${{ vars.SONAR_ENABLED == 'true' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+    - name: Run tests
+      run: cargo test --verbose
     - name: Run tests
       run: cargo test --verbose
