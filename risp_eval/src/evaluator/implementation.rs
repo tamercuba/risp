@@ -41,6 +41,7 @@ impl Evaluator {
     }
 
     fn eval_obj(&mut self, obj: &Object) -> Result<Object, String> {
+        println!("[EVAL OBJ] {:?}", obj);
         match obj {
             Object::List(list) => {
                 let result = self.eval_list(list);
@@ -122,6 +123,7 @@ impl Evaluator {
                     "defun" => self.eval_function(&list),
                     "if" => self.eval_if(&list),
                     "lambda" => self.eval_lambda(&list),
+                    "true" | "false" => Ok(Object::Bool(s == "true")),
                     // TODO: Add a basic std lib
                     _ => self.eval_func_call(&s, &list),
                 }
@@ -141,6 +143,15 @@ impl Evaluator {
     }
 
     fn eval_symbol(&mut self, symbol: &str) -> Result<Object, String> {
+        match symbol {
+            "true" => {
+                return Ok(Object::Bool(true));
+            }
+            "false" => {
+                return Ok(Object::Bool(false));
+            }
+            _ => {}
+        }
         let val_opt = self.env.borrow_mut().get(symbol);
         match val_opt {
             Some(val) => Ok(val.clone()),
