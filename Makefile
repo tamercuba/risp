@@ -1,8 +1,10 @@
+export RUST_BACKTRACE=1
+
 build_eval:  ## Build the risp_eval library
 	@cargo build -p risp_eval
 
 test-eval: build_eval  ## Run tests for the risp_eval library
-	@cargo test --lib -p risp_eval
+	@cargo test --lib -p risp_eval --verbose
 
 test-cov: ## Run tests with coverage
 	@./.github/scripts/run-cov.sh

@@ -13,11 +13,19 @@ impl Token {
         let parsed_program = program.replace("(", " ( ").replace(")", " ) ");
         let words = parsed_program.split_whitespace();
         let mut tokens: Vec<Token> = vec![];
-
+        let mut parentheses_count = 0;
         for word in words {
             match word {
-                "(" => tokens.push(Token::LParen),
-                ")" => tokens.push(Token::RParen),
+                "(" => {
+                    parentheses_count += 1;
+                    tokens.push(Token::LParen);
+                    continue;
+                }
+                ")" => {
+                    parentheses_count -= 1;
+                    tokens.push(Token::RParen);
+                    continue;
+                }
                 _ => {
                     let i = word.parse::<i64>();
                     if i.is_ok() {
@@ -28,7 +36,13 @@ impl Token {
                 }
             }
         }
-        Ok(tokens)
+        if parentheses_count == 0 {
+            Ok(tokens)
+        } else if parentheses_count < 0 {
+            Err(TokenError { ch: ')' })
+        } else {
+            Err(TokenError { ch: '(' })
+        }
     }
 }
 
@@ -39,6 +53,10 @@ pub struct TokenError {
 
 impl Display for TokenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unexpected character: {}", self.ch)
+        match self.ch {
+            '(' => write!(f, "Unmatched closing parenthesis"),
+            ')' => write!(f, "Unmatched opening parenthesis"),
+            _ => write!(f, "Unexpected character: {}", self.ch),
+        }
     }
 }

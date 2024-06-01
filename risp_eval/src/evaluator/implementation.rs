@@ -41,7 +41,6 @@ impl Evaluator {
     }
 
     fn eval_obj(&mut self, obj: &Object) -> Result<Object, String> {
-        println!("[EVAL OBJ] {:?}", obj);
         match obj {
             Object::List(list) => {
                 let result = self.eval_list(list);

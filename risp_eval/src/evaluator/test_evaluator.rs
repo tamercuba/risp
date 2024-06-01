@@ -2,6 +2,19 @@
 use crate::{ parser::Object, evaluator::Evaluator };
 
 #[test]
+fn test_eval_tokens_with_error() {
+    let program = "(+ 1 2";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+    assert_eq!(result, "Unmatched closing parenthesis");
+}
+
+#[test]
 fn test_eval_add_func() {
     let program = "(+ 1 2)";
     let mut evaluator = Evaluator::new(false);
@@ -142,4 +155,19 @@ fn test_func_call_doesnt_exist() {
 
     assert!(result.is_err());
     assert_eq!(result.err().unwrap(), "Function not defined: foo");
+}
+
+#[test]
+fn test_eval_with_boolean() {
+    let program1 = "(define x true)";
+    let program2 = "(if x 10 20)";
+    let mut evaluator = Evaluator::new(false);
+
+    let _ = evaluator.eval(program1).unwrap();
+    let result = evaluator.eval(program2);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+    assert_eq!(result, Object::Integer(10));
 }
