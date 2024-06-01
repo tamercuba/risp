@@ -20,8 +20,8 @@ fn test_add() {
 fn test_area_of_a_circle() {
     let program = "
     (
-     (define r 10)
-     (define pi 314)
+     (let r 10)
+     (let pi 314)
      (* pi (* r r))
     )
     ";
@@ -31,12 +31,12 @@ fn test_area_of_a_circle() {
         vec![
             Token::LParen,
             Token::LParen,
-            Token::Symbol("define".to_string()),
+            Token::Symbol("let".to_string()),
             Token::Symbol("r".to_string()),
             Token::Integer(10),
             Token::RParen,
             Token::LParen,
-            Token::Symbol("define".to_string()),
+            Token::Symbol("let".to_string()),
             Token::Symbol("pi".to_string()),
             Token::Integer(314),
             Token::RParen,

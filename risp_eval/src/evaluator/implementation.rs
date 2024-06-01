@@ -118,7 +118,7 @@ impl Evaluator {
                     "+" | "-" | "*" | "/" | "<" | ">" | "=" | "!=" => {
                         return self.eval_binary_op(&list);
                     }
-                    "define" => self.eval_define(&list),
+                    "let" => self.eval_let(&list),
                     "defun" => self.eval_function(&list),
                     "if" => self.eval_if(&list),
                     "lambda" => self.eval_lambda(&list),
@@ -203,15 +203,15 @@ impl Evaluator {
         }
     }
 
-    fn eval_define(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_let(&mut self, list: &Vec<Object>) -> Result<Object, String> {
         if list.len() != 3 {
-            return Err(format!("Invalid number of arguments for define"));
+            return Err(format!("Invalid number of arguments for let"));
         }
 
         let sym = match &list[1] {
             Object::Symbol(s) => s.clone(),
             _ => {
-                return Err(format!("Invalid define"));
+                return Err(format!("Invalid let"));
             }
         };
         let val = self.eval_obj(&list[2])?;

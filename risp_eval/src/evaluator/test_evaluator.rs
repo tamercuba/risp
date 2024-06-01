@@ -46,8 +46,8 @@ fn test_eval_division_by_zero() {
 fn test_eval_with_var() {
     let program = "
     (
-     (define r 10)
-     (define pi 314)
+     (let r 10)
+     (let pi 314)
      (* pi (* r r))
     )
     ";
@@ -63,10 +63,10 @@ fn test_eval_with_var() {
 }
 
 #[test]
-fn test_eval_lambda_into_define() {
+fn test_eval_lambda_into_let() {
     let program = "
     (
-     (define square (lambda (x) (* x x)))
+     (let square (lambda (x) (* x x)))
      (square 10)
     )
     ";
@@ -159,7 +159,7 @@ fn test_func_call_doesnt_exist() {
 
 #[test]
 fn test_eval_with_boolean() {
-    let program1 = "(define x true)";
+    let program1 = "(let x true)";
     let program2 = "(if x 10 20)";
     let mut evaluator = Evaluator::new(false);
 
