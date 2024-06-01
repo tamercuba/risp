@@ -6,7 +6,7 @@ const PROMPT: &str = "risp> ";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reader = Interface::new(PROMPT).unwrap();
-    let mut evaluator = Evaluator::new();
+    let mut evaluator = Evaluator::new(true);
 
     reader.set_prompt(format!("{}", PROMPT).as_ref()).unwrap();
 
