@@ -13,20 +13,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Rust
+      run: rustup update stable
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
     - name: Build
       run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
-  sonarcloud:
-    name: SonarCloud
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Run tests with coverage
+      run: ./.github/scripts/run-cov.sh
+    - name: Report coverage to Codacy
+      uses: codacy/codacy-coverage-reporter-action@v1.3.0
+      with:
+        project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+        coverage-reports: target/coverage/coverage.xml
+        language: rust
+  # codacy-coverage-reporter:
+  #   runs-on: ubuntu-latest
+  #   name: codacy-coverage-reporter
+  #   needs: build
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Run codacy-coverage-reporter
+  #       uses: codacy/codacy-coverage-reporter-action@v1.3.0
+  #       with:
+  #         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+  #         coverage-reports: target/coverage/coverage.xml
+  #         language: rust
