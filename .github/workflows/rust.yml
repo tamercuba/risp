@@ -16,14 +16,21 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install Rust
+      run: rustup update stable
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
+    # - name: Install Clippy
+    #   run: rustup component add clippy
+    # - name: Install cargo-sonar and run Clippy
+    #   run: |
+    #     cargo install cargo-sonar
+    #     cargo clippy --message-format > my-clippy-report.json
+    #     cargo sonar --clippy --clippy-path my-clippy-report.json
     - name: Build
       run: cargo build --verbose
-    - name: Installing Coverage dependencies
-      run: cargo install cargo-tarpaulin
     - name: Run tests with coverage
       run: ./.github/scripts/run-cov.sh
-    # - name: Tests
-    #   run: cargo test --verbose
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
       env:

@@ -3,11 +3,13 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-# Ensure the target directory exists
-mkdir -p target/tarpaulin
+mkdir -p target/coverage
 
-# Run cargo tarpaulin to generate coverage report in XML format
-cargo tarpaulin --verbose --fail-under 40 --out Xml --output-dir target/tarpaulin
+# Run cargo test with code coverage flags
+CARGO_INCREMENTAL=0 RUSTFLAGS='-C instrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
 
-# Checking if coverage file exists 
-ls -la target/tarpaulin
+# Generate the coverage report using grcov
+# grcov . -s . --binary-path ./target/debug/ --branch --ignore-not-existing --ignore "/*" --ignore "target/debug/*" -o target/tarpaulin/coverage.xml
+cargo llvm-cov --all-features --workspace --json --output-path target/coverage/coverage.json
+
+ls -la target/coverage
