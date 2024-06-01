@@ -20,19 +20,25 @@ jobs:
       run: rustup update stable
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
-    # - name: Install Clippy
-    #   run: rustup component add clippy
-    # - name: Install cargo-sonar and run Clippy
-    #   run: |
-    #     cargo install cargo-sonar
-    #     cargo clippy --message-format > my-clippy-report.json
-    #     cargo sonar --clippy --clippy-path my-clippy-report.json
     - name: Build
       run: cargo build --verbose
     - name: Run tests with coverage
       run: ./.github/scripts/run-cov.sh
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Report coverage to Codacy
+      uses: codacy/codacy-coverage-reporter-action@v1.3.0
+      with:
+        project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+        coverage-reports: target/coverage/coverage.xml
+        language: rust
+  # codacy-coverage-reporter:
+  #   runs-on: ubuntu-latest
+  #   name: codacy-coverage-reporter
+  #   needs: build
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Run codacy-coverage-reporter
+  #       uses: codacy/codacy-coverage-reporter-action@v1.3.0
+  #       with:
+  #         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+  #         coverage-reports: target/coverage/coverage.xml
+  #         language: rust
