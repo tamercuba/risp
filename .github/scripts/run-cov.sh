@@ -10,7 +10,6 @@ CARGO_INCREMENTAL=0 RUSTFLAGS='-C instrument-coverage' LLVM_PROFILE_FILE='cargo-
 
 # Generate the coverage report using grcov
 # grcov . -s . --binary-path ./target/debug/ --branch --ignore-not-existing --ignore "/*" --ignore "target/debug/*" -o target/tarpaulin/coverage.xml
-cargo llvm-cov --all-features --workspace --cobertura --ignore-filename-regex ^(?!.*\.rs$|test_.*\.rs$|mod\.rs$|lib\.rs$|LICENSE$|Makefile$).*$|^(test_.*\.rs|mod\.rs|lib\.rs|LICENSE|Makefile)$
- --output-path target/coverage/coverage.xml
+cargo llvm-cov --all-features --workspace --cobertura --ignore-filename-regex '^(test_.*\.rs|mod\.rs|lib\.rs|LICENSE|Makefile)$|^[^\.]*$|^[^.]*\..[^r][^s]$|^[^.]*\.r[^s]$|^[^.]*\.[^r]s$' --output-path target/coverage/coverage.xml
 
 ls -la target/coverage
