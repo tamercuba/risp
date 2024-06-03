@@ -24,7 +24,7 @@ pub fn concat_str(objs: &Vec<Object>) -> Result<Object, String> {
                 match obj {
                     Object::String(s) => result.push_str(s),
                     _ => {
-                        return Err(format!("Expected String, found {}", obj));
+                        return Err(format!("Invalid value {obj}, it isnt a str"));
                     }
                 }
             }
@@ -43,7 +43,7 @@ pub fn list_take_first(objs: &Vec<Object>) -> Result<Object, String> {
                     }
                     Ok(list[0].clone())
                 }
-                _ => Err(format!("Expected List, found {}", objs[0])),
+                _ => Err(format!("{} is not a List", objs[0])),
             }
         }
         _ => Err(format!("Expected 1 argument, found {}", objs.len())),
