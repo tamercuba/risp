@@ -14,8 +14,8 @@ fn test_parser_add() {
 #[test]
 fn test_area_of_a_circle() {
     let program = "(
-        (define r 10)
-        (define pi 314)
+        (let r 10)
+        (let pi 314)
         (* pi (* r r))
     )";
     let tokens = Token::tokenize(program).unwrap();
@@ -26,14 +26,14 @@ fn test_area_of_a_circle() {
             vec![
                 Object::List(
                     vec![
-                        Object::Symbol("define".to_string()),
+                        Object::Symbol("let".to_string()),
                         Object::Symbol("r".to_string()),
                         Object::Integer(10)
                     ]
                 ),
                 Object::List(
                     vec![
-                        Object::Symbol("define".to_string()),
+                        Object::Symbol("let".to_string()),
                         Object::Symbol("pi".to_string()),
                         Object::Integer(314)
                     ]

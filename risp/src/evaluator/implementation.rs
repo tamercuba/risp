@@ -28,7 +28,10 @@ impl Evaluator {
             );
         self.env
             .borrow_mut()
-            .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)))
+            .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)));
+        self.env
+            .borrow_mut()
+            .set("println", Object::SysCall(SysCallWrapper::new("println", stdlib::print_ln)));
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
@@ -118,10 +121,11 @@ impl Evaluator {
                     "+" | "-" | "*" | "/" | "<" | ">" | "=" | "!=" => {
                         return self.eval_binary_op(&list);
                     }
-                    "define" => self.eval_define(&list),
+                    "let" => self.eval_let(&list),
                     "defun" => self.eval_function(&list),
                     "if" => self.eval_if(&list),
                     "lambda" => self.eval_lambda(&list),
+                    "true" | "false" => Ok(Object::Bool(s == "true")),
                     // TODO: Add a basic std lib
                     _ => self.eval_func_call(&s, &list),
                 }
@@ -141,6 +145,15 @@ impl Evaluator {
     }
 
     fn eval_symbol(&mut self, symbol: &str) -> Result<Object, String> {
+        match symbol {
+            "true" => {
+                return Ok(Object::Bool(true));
+            }
+            "false" => {
+                return Ok(Object::Bool(false));
+            }
+            _ => {}
+        }
         let val_opt = self.env.borrow_mut().get(symbol);
         match val_opt {
             Some(val) => Ok(val.clone()),
@@ -193,28 +206,71 @@ impl Evaluator {
         }
     }
 
-    fn eval_define(&mut self, list: &Vec<Object>) -> Result<Object, String> {
-        if list.len() != 3 {
-            return Err(format!("Invalid number of arguments for define"));
+    fn eval_let(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+        if list.len() < 2 {
+            return Err(format!("Expect at least one argument for let, got {}", list.len() - 1));
         }
 
-        let sym = match &list[1] {
-            Object::Symbol(s) => s.clone(),
-            _ => {
-                return Err(format!("Invalid define"));
-            }
-        };
-        let val = self.eval_obj(&list[2])?;
-        match val {
-            Object::Lambda(params, body) => {
-                self.env.borrow_mut().set(sym.as_str(), Object::Function(params, body));
+        let mut result: Result<Object, String> = Ok(Object::Void);
+        match (&list[1], &list.get(2)) {
+            (Object::Symbol(_), Some(_)) => {
+                // Let is a local definition keyword
+                // So if we have a single symbol and a single value
+                // like (let x 10), there is nothing to do unless return Void
                 return Ok(Object::Void);
             }
-            _ => {}
+            (Object::Symbol(s), None) => {
+                return Err(format!("Invalid syntax, there is no value to assign to {}", s));
+            }
+            (Object::List(l), &body) => {
+                self.env = Env::new_scope(self.env.clone());
+                for obj in l {
+                    match obj {
+                        Object::List(arg) => {
+                            if arg.len() != 2 {
+                                return Err(
+                                    format!(
+                                        "Invalid syntax, expected a list of 2 elements, got {}",
+                                        arg.len()
+                                    )
+                                );
+                            }
+                            match &arg[0] {
+                                Object::Symbol(s) => {
+                                    let val = self.eval_obj(&arg[1])?;
+                                    self.env.borrow_mut().set(s.clone().as_str(), val);
+                                }
+                                _ => {
+                                    return Err(
+                                        format!("{} is a invalid symbol to let assignment", arg[0])
+                                    );
+                                }
+                            }
+                        }
+                        _ => {
+                            return Err(format!("Invalid syntax, expected a list, got {}", obj));
+                        }
+                    }
+                    match body {
+                        Some(b) => {
+                            result = self.eval_obj(b);
+                        }
+                        None => {}
+                    }
+                }
+                self.env.borrow_mut().remove_scope();
+                return result;
+            }
+            _ => {
+                return Err(
+                    format!(
+                        "Invalid assignment syntax for {} with value {}",
+                        list[1],
+                        list.get(2).unwrap_or(&Object::Void)
+                    )
+                );
+            }
         }
-
-        self.env.borrow_mut().set(sym.as_str(), val);
-        Ok(Object::Void)
     }
 
     fn eval_if(&mut self, list: &Vec<Object>) -> Result<Object, String> {
@@ -271,7 +327,7 @@ impl Evaluator {
 
         let func = func_result.unwrap();
         match func {
-            Object::Function(params, body) => {
+            Object::Function(params, body) | Object::Lambda(params, body) => {
                 self.env = Env::new_scope(self.env.clone());
                 for (i, param) in params.iter().enumerate() {
                     let val = self.eval_obj(&list[i + 1])?;
@@ -290,6 +346,8 @@ impl Evaluator {
                 return sys_call.run(&args);
             }
             _ => {
+                println!("[NOT A FUNC]: {:?}", func);
+                println!("[ENV]: {:?}", self.env.borrow());
                 return Err(format!("Not a function: {}", func_name));
             }
         }

@@ -30,3 +30,14 @@ fn test_add_var_with_parent() {
     );
     assert_eq!(env.borrow().get("y"), Some(Object::Integer(20)));
 }
+
+#[test]
+fn test_remove_scope_without_parent() {
+    let env = Env::new();
+    env.borrow_mut().set("x", Object::Integer(10));
+    env.borrow_mut().set("y", Object::Integer(20));
+
+    env.borrow_mut().remove_scope();
+
+    assert!(env.borrow().vars().is_empty());
+}

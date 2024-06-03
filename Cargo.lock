@@ -300,11 +300,11 @@ name = "repl"
 version = "0.2.1"
 dependencies = [
  "linefeed",
- "risp_eval",
+ "risp",
 ]
 
 [[package]]
-name = "risp_eval"
+name = "risp"
 version = "0.2.1"
 
 [[package]]

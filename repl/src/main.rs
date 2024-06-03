@@ -1,4 +1,4 @@
-use risp_eval::Evaluator;
+use risp::Evaluator;
 
 use linefeed::{ Interface, ReadResult };
 
