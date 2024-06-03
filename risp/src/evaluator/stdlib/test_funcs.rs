@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::{ evaluator::stdlib::funcs::*, parser::Object };
+use crate::{ evaluator::stdlib::funcs::*, parser::Object, evaluator::SysCallWrapper };
 
 #[test]
 fn test_to_str() {
@@ -89,4 +89,24 @@ fn test_take_first_without_args() {
     let result = result.err().unwrap();
 
     assert_eq!(result, "Expected 1 argument, found 0");
+}
+
+#[test]
+fn test_sys_call_wrapper_debug_trait() {
+    let wrapper = SysCallWrapper::new("test", |args| { Ok(Object::String(format!("{:?}", args))) });
+    let expected_output = "<std::test>";
+
+    assert_eq!(format!("{:?}", wrapper), expected_output);
+}
+
+#[test]
+fn test_sys_call_wrapper_eq_trait() {
+    let wrapper1 = SysCallWrapper::new("test", |args| {
+        Ok(Object::String(format!("{:?}", args)))
+    });
+    let wrapper2 = SysCallWrapper::new("test", |args| {
+        Ok(Object::String(format!("{:?}", args)))
+    });
+
+    assert_eq!(wrapper1, wrapper2);
 }
