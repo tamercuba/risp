@@ -28,7 +28,10 @@ impl Evaluator {
             );
         self.env
             .borrow_mut()
-            .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)))
+            .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)));
+        self.env
+            .borrow_mut()
+            .set("println", Object::SysCall(SysCallWrapper::new("println", stdlib::print_ln)));
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
@@ -204,27 +207,62 @@ impl Evaluator {
     }
 
     fn eval_let(&mut self, list: &Vec<Object>) -> Result<Object, String> {
-        if list.len() != 3 {
-            return Err(format!("Invalid number of arguments for let"));
+        if list.len() < 2 {
+            return Err(format!("Expect at least 3 arguments for let, got {}", list.len()));
         }
 
-        let sym = match &list[1] {
-            Object::Symbol(s) => s.clone(),
-            _ => {
-                return Err(format!("Invalid let"));
-            }
-        };
-        let val = self.eval_obj(&list[2])?;
-        match val {
-            Object::Lambda(params, body) => {
-                self.env.borrow_mut().set(sym.as_str(), Object::Function(params, body));
+        let mut result: Result<Object, String> = Ok(Object::Void);
+        match (&list[1], &list.get(2)) {
+            (Object::Symbol(s), _) => {
+                let val = self.eval_obj(&list[2])?;
+                match val {
+                    Object::Lambda(params, body) => {
+                        self.env
+                            .borrow_mut()
+                            .set(s.clone().as_str(), Object::Function(params, body));
+                        return Ok(Object::Void);
+                    }
+                    _ => {}
+                }
                 return Ok(Object::Void);
             }
-            _ => {}
+            (Object::List(l), &body) => {
+                self.env = Env::new_scope(self.env.clone());
+                for obj in l {
+                    match obj {
+                        Object::List(arg) => {
+                            if arg.len() != 2 {
+                                return Err(format!("Invalid let"));
+                            }
+                            match &arg[0] {
+                                Object::Symbol(s) => {
+                                    let val = self.eval_obj(&arg[1])?;
+                                    self.env.borrow_mut().set(s.clone().as_str(), val);
+                                }
+                                _ => {
+                                    return Err(format!("Invalid let"));
+                                }
+                            }
+                        }
+                        _ => {
+                            return Err(format!("Invalid let"));
+                        }
+                    }
+                    match body {
+                        Some(b) => {
+                            result = self.eval_obj(b);
+                        }
+                        None => {}
+                    }
+                }
+                self.env.borrow_mut().remove_scope();
+                return result;
+            }
+            _ => {
+                println!("[MATCH LET]: {}, {}", list[1], list.get(2).unwrap_or(&Object::Void));
+                return Err(format!("Invalid let"));
+            }
         }
-
-        self.env.borrow_mut().set(sym.as_str(), val);
-        Ok(Object::Void)
     }
 
     fn eval_if(&mut self, list: &Vec<Object>) -> Result<Object, String> {
@@ -281,7 +319,7 @@ impl Evaluator {
 
         let func = func_result.unwrap();
         match func {
-            Object::Function(params, body) => {
+            Object::Function(params, body) | Object::Lambda(params, body) => {
                 self.env = Env::new_scope(self.env.clone());
                 for (i, param) in params.iter().enumerate() {
                     let val = self.eval_obj(&list[i + 1])?;
@@ -300,6 +338,8 @@ impl Evaluator {
                 return sys_call.run(&args);
             }
             _ => {
+                println!("[NOT A FUNC]: {:?}", func);
+                println!("[ENV]: {:?}", self.env.borrow());
                 return Err(format!("Not a function: {}", func_name));
             }
         }

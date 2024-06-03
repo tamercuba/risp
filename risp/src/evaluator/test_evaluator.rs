@@ -45,11 +45,7 @@ fn test_eval_division_by_zero() {
 #[test]
 fn test_eval_with_var() {
     let program = "
-    (
-     (let r 10)
-     (let pi 314)
-     (* pi (* r r))
-    )
+        (let ((r 10) (pi 314)) (* pi (* r r)))
     ";
     let mut evaluator = Evaluator::new(false);
 
@@ -59,7 +55,7 @@ fn test_eval_with_var() {
 
     let result = result.unwrap();
 
-    assert_eq!(result, Object::List(vec![Object::Integer(31400)]));
+    assert_eq!(result, Object::Integer(31400));
 }
 
 #[test]
@@ -159,13 +155,12 @@ fn test_func_call_doesnt_exist() {
 
 #[test]
 fn test_eval_with_boolean() {
-    let program1 = "(let x true)";
-    let program2 = "(if x 10 20)";
+    let program = "(let ((x true)) (if x 10 20))";
     let mut evaluator = Evaluator::new(false);
 
-    let _ = evaluator.eval(program1).unwrap();
-    let result = evaluator.eval(program2);
+    let result = evaluator.eval(program);
 
+    println!("{:?}", result);
     assert!(result.is_ok());
 
     let result = result.unwrap();

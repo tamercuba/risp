@@ -49,3 +49,10 @@ pub fn list_take_first(objs: &Vec<Object>) -> Result<Object, String> {
         _ => Err(format!("Expected 1 argument, found {}", objs.len())),
     }
 }
+
+pub fn print_ln(obj: &Vec<Object>) -> Result<Object, String> {
+    for obj in obj.iter() {
+        print!("{}", obj);
+    }
+    Ok(Object::Void)
+}

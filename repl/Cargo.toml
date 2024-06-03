@@ -4,5 +4,5 @@ version = "0.2.1"
 edition = "2021"
 
 [dependencies]
-risp_eval = { path = "../risp_eval" }
+risp = { path = "../risp" }
 linefeed = "0.6.0"
