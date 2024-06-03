@@ -208,23 +208,19 @@ impl Evaluator {
 
     fn eval_let(&mut self, list: &Vec<Object>) -> Result<Object, String> {
         if list.len() < 2 {
-            return Err(format!("Expect at least 3 arguments for let, got {}", list.len()));
+            return Err(format!("Expect at least one argument for let, got {}", list.len() - 1));
         }
 
         let mut result: Result<Object, String> = Ok(Object::Void);
         match (&list[1], &list.get(2)) {
-            (Object::Symbol(s), _) => {
-                let val = self.eval_obj(&list[2])?;
-                match val {
-                    Object::Lambda(params, body) => {
-                        self.env
-                            .borrow_mut()
-                            .set(s.clone().as_str(), Object::Function(params, body));
-                        return Ok(Object::Void);
-                    }
-                    _ => {}
-                }
+            (Object::Symbol(_), Some(_)) => {
+                // Let is a local definition keyword
+                // So if we have a single symbol and a single value
+                // like (let x 10), there is nothing to do unless return Void
                 return Ok(Object::Void);
+            }
+            (Object::Symbol(s), None) => {
+                return Err(format!("Invalid syntax, there is no value to assign to {}", s));
             }
             (Object::List(l), &body) => {
                 self.env = Env::new_scope(self.env.clone());
@@ -232,7 +228,12 @@ impl Evaluator {
                     match obj {
                         Object::List(arg) => {
                             if arg.len() != 2 {
-                                return Err(format!("Invalid let"));
+                                return Err(
+                                    format!(
+                                        "Invalid syntax, expected a list of 2 elements, got {}",
+                                        arg.len()
+                                    )
+                                );
                             }
                             match &arg[0] {
                                 Object::Symbol(s) => {
@@ -240,12 +241,14 @@ impl Evaluator {
                                     self.env.borrow_mut().set(s.clone().as_str(), val);
                                 }
                                 _ => {
-                                    return Err(format!("Invalid let"));
+                                    return Err(
+                                        format!("{} is a invalid symbol to let assignment", arg[0])
+                                    );
                                 }
                             }
                         }
                         _ => {
-                            return Err(format!("Invalid let"));
+                            return Err(format!("Invalid syntax, expected a list, got {}", obj));
                         }
                     }
                     match body {
@@ -259,8 +262,13 @@ impl Evaluator {
                 return result;
             }
             _ => {
-                println!("[MATCH LET]: {}, {}", list[1], list.get(2).unwrap_or(&Object::Void));
-                return Err(format!("Invalid let"));
+                return Err(
+                    format!(
+                        "Invalid assignment syntax for {} with value {}",
+                        list[1],
+                        list.get(2).unwrap_or(&Object::Void)
+                    )
+                );
             }
         }
     }

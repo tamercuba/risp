@@ -59,13 +59,8 @@ fn test_eval_with_var() {
 }
 
 #[test]
-fn test_eval_lambda_into_let() {
-    let program = "
-    (
-     (let square (lambda (x) (* x x)))
-     (square 10)
-    )
-    ";
+fn test_eval_let_list_without_body() {
+    let program = "(let ((x 10) (y 20)))";
     let mut evaluator = Evaluator::new(false);
 
     let result = evaluator.eval(program);
@@ -74,7 +69,103 @@ fn test_eval_lambda_into_let() {
 
     let result = result.unwrap();
 
-    assert_eq!(result, Object::List(vec![Object::Integer(100)]));
+    assert_eq!(result, Object::Void);
+}
+
+#[test]
+fn test_eval_let_without_var_name() {
+    let program = "(let )";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "Expect at least one argument for let, got 0");
+}
+
+#[test]
+fn test_eval_let_single_var_without_value() {
+    let program = "(let x)";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "Invalid syntax, there is no value to assign to x");
+}
+
+#[test]
+fn test_eval_let_single_assingment() {
+    let program = "(let x 10)";
+    let mut evaluator = Evaluator::new(false);
+    let result = evaluator.eval(program);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+    assert_eq!(result, Object::Void);
+}
+
+#[test]
+fn test_eval_let_list_assignment_with_wrong_number_of_args() {
+    let program = "(let ((x 10) (y)))";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "Invalid syntax, expected a list of 2 elements, got 1");
+}
+
+#[test]
+fn test_eval_let_list_assignment_with_invalid_symbol() {
+    let program = "(let ( (() 10) ))";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "() is a invalid symbol to let assignment");
+}
+
+#[test]
+fn test_eval_let_list_assignment_with_non_list() {
+    let program = "(let (x))";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "Invalid syntax, expected a list, got x");
+}
+
+#[test]
+fn test_eval_lambda_into_let() {
+    let program = "(let ((square (lambda (x) (* x x)))) (square 10))";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+
+    assert_eq!(result, Object::Integer(100));
 }
 
 #[test]
