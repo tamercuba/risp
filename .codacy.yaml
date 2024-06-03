@@ -8,7 +8,7 @@ exclude_paths:
   - "**/mod.rs"
   - "**/lib.rs"
   - "**/main.rs"
-  - "**/.github/**"
+  - ".github/**/*"
   - "**/target/**"
   - "**/Cargo.lock"
   - "**/Cargo.toml"
