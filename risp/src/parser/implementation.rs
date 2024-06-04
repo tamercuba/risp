@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::lexer::Token;
+use crate::lexer::{ Content, Token };
 use crate::evaluator::SysCallWrapper;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -21,18 +21,33 @@ pub enum Object {
 impl Object {
     pub fn from_tokens(tokens: Vec<Token>) -> Result<Object, ParserError> {
         let mut rev_tokens = tokens.into_iter().rev().collect::<Vec<_>>();
-        let parsed_list = Self::_parse_list(&mut rev_tokens)?;
+        let parsed_list = Self::_parse_list(&mut rev_tokens, None)?;
         return Ok(parsed_list);
     }
 
-    fn _parse_list(tokens: &mut Vec<Token>) -> Result<Object, ParserError> {
-        let token = tokens.pop();
-        if token != Some(Token::LParen) {
+    fn _parse_list(tokens: &mut Vec<Token>, pb: Option<i32>) -> Result<Object, ParserError> {
+        let token_result = tokens.pop();
+        if token_result.is_none() {
             return Err(ParserError {
                 err: format!("Did not find enough tokens"),
+                ch: 0,
+                line: 0,
             });
         }
 
+        let token = token_result.unwrap();
+        if token != Token::LParen(Content::new((), 0, 0)) {
+            return Err(ParserError {
+                err: format!("Invalid token found: {:?}, expect (", token),
+                ch: 1,
+                line: 0,
+            });
+        }
+
+        let mut parenthesis_balance = match pb {
+            Some(pb) => pb,
+            None => 1,
+        };
         let mut list: Vec<Object> = vec![];
 
         while !tokens.is_empty() {
@@ -40,28 +55,36 @@ impl Object {
             if token == None {
                 return Err(ParserError {
                     err: format!("Did not find enough tokens"),
+                    ch: 0,
+                    line: 0,
                 });
             }
             let t = token.unwrap();
 
             match t {
-                Token::Integer(n) => list.push(Object::Integer(n)),
+                Token::Integer(n) => list.push(Object::Integer(n.content)),
                 Token::Symbol(s) => {
+                    let content = s.content.clone();
                     if
-                        (s.chars().next() == Some('"') && s.chars().last() == Some('"')) ||
-                        (s.chars().next() == Some('\'') && s.chars().last() == Some('\''))
+                        (content.chars().next() == Some('"') &&
+                            content.chars().last() == Some('"')) ||
+                        (content.chars().next() == Some('\'') &&
+                            content.chars().last() == Some('\''))
                     {
-                        list.push(Object::String(s.as_str()[1..s.len() - 1].to_string()));
+                        list.push(
+                            Object::String(content.as_str()[1..content.len() - 1].to_string())
+                        );
                     } else {
-                        list.push(Object::Symbol(s));
+                        list.push(Object::Symbol(content));
                     }
                 }
-                Token::LParen => {
-                    tokens.push(Token::LParen);
-                    let sub_list = Self::_parse_list(tokens)?;
+                Token::LParen(c) => {
+                    tokens.push(Token::LParen(c.clone()));
+                    parenthesis_balance += 1;
+                    let sub_list = Self::_parse_list(tokens, Some(parenthesis_balance))?;
                     list.push(sub_list);
                 }
-                Token::RParen => {
+                Token::RParen(c) => {
                     return Ok(Object::List(list));
                 }
             }
@@ -74,10 +97,12 @@ impl Object {
 #[derive(Debug)]
 pub struct ParserError {
     err: String,
+    ch: usize,
+    line: usize,
 }
 impl Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[ParserError]: {err}", err = self.err)
+        write!(f, "{line}:{ch} {err}", line = self.line, ch = self.ch, err = self.err)
     }
 }
 
