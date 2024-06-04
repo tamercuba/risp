@@ -3,7 +3,7 @@ use crate::{ parser::Object, lexer::Token };
 
 #[test]
 fn test_parser_add() {
-    let tokens = Token::tokenize("(+ 1 2)").unwrap();
+    let tokens = Token::tokenize("(+ 1 2)");
     let list = Object::from_tokens(tokens).unwrap();
     assert_eq!(
         list,
@@ -18,7 +18,8 @@ fn test_area_of_a_circle() {
         (let pi 314)
         (* pi (* r r))
     )";
-    let tokens = Token::tokenize(program).unwrap();
+    let tokens = Token::tokenize(program);
+
     let list = Object::from_tokens(tokens).unwrap();
     assert_eq!(
         list,

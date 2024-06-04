@@ -15,3 +15,8 @@ impl Display for EvalError {
 pub trait Eval {
     fn eval(&self) -> Result<(), EvalError>;
 }
+
+struct ASTLet {
+    name: String,
+    
+}

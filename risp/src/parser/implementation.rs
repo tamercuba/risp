@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::fmt::Display;
+use std::rc::Rc;
 
 use crate::lexer::{ Content, Token };
 use crate::evaluator::SysCallWrapper;
@@ -21,13 +23,27 @@ pub enum Object {
 impl Object {
     pub fn from_tokens(tokens: Vec<Token>) -> Result<Object, ParserError> {
         let mut rev_tokens = tokens.into_iter().rev().collect::<Vec<_>>();
-        let parsed_list = Self::_parse_list(&mut rev_tokens, None)?;
+        let parsed_list = Self::_parse_list(&mut rev_tokens)?;
         return Ok(parsed_list);
     }
 
-    fn _parse_list(tokens: &mut Vec<Token>, pb: Option<i32>) -> Result<Object, ParserError> {
-        let token_result = tokens.pop();
-        if token_result.is_none() {
+    fn _parse_list(tokens: &mut Vec<Token>) -> Result<Object, ParserError> {
+        let mut parenthesis_count: Vec<Token> = vec![];
+        let result = Self::_parse_list_and_count_parenthesis(tokens, &mut parenthesis_count);
+
+        if result.is_err() {
+            return result;
+        }
+        let list = result.unwrap();
+
+        return Ok(list);
+    }
+
+    fn _parse_list_and_count_parenthesis(
+        tokens: &mut Vec<Token>,
+        pc: &mut Vec<Token>
+    ) -> Result<Object, ParserError> {
+        if tokens.is_empty() {
             return Err(ParserError {
                 err: format!("Did not find enough tokens"),
                 ch: 0,
@@ -35,19 +51,16 @@ impl Object {
             });
         }
 
-        let token = token_result.unwrap();
-        if token != Token::LParen(Content::new((), 0, 0)) {
+        let t = tokens.pop().unwrap();
+        let statment = t != Token::LParen(Content::new((), 0, 0));
+        if statment {
             return Err(ParserError {
-                err: format!("Invalid token found: {:?}, expect (", token),
+                err: format!("Invalid token found: {:?}, expect (", t),
                 ch: 1,
                 line: 0,
             });
         }
-
-        let mut parenthesis_balance = match pb {
-            Some(pb) => pb,
-            None => 1,
-        };
+        pc.push(t.clone());
         let mut list: Vec<Object> = vec![];
 
         while !tokens.is_empty() {
@@ -80,11 +93,19 @@ impl Object {
                 }
                 Token::LParen(c) => {
                     tokens.push(Token::LParen(c.clone()));
-                    parenthesis_balance += 1;
-                    let sub_list = Self::_parse_list(tokens, Some(parenthesis_balance))?;
+                    let sub_list = Self::_parse_list_and_count_parenthesis(tokens, pc)?;
+                    pc.push(Token::LParen(c));
                     list.push(sub_list);
                 }
                 Token::RParen(c) => {
+                    if pc.is_empty() {
+                        return Err(ParserError {
+                            err: format!("Unmatched closing parenthesis"),
+                            ch: c.ch,
+                            line: c.line,
+                        });
+                    }
+                    pc.pop();
                     return Ok(Object::List(list));
                 }
             }
