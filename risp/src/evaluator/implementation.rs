@@ -35,7 +35,7 @@ impl Evaluator {
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
-        let tokens = Token::tokenize(statement).map_err(|e| format!("{}", e))?;
+        let tokens = Token::tokenize(statement);
         let parsed_list = Object::from_tokens(tokens);
         return match parsed_list {
             Ok(_) => self.eval_obj(&parsed_list.unwrap()),
@@ -346,8 +346,6 @@ impl Evaluator {
                 return sys_call.run(&args);
             }
             _ => {
-                println!("[NOT A FUNC]: {:?}", func);
-                println!("[ENV]: {:?}", self.env.borrow());
                 return Err(format!("Not a function: {}", func_name));
             }
         }
