@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use crate::lexer::Token;
 use crate::evaluator::SysCallWrapper;
 
@@ -21,67 +19,135 @@ pub enum Object {
 impl Object {
     pub fn from_tokens(tokens: Vec<Token>) -> Result<Object, ParserError> {
         let mut rev_tokens = tokens.into_iter().rev().collect::<Vec<_>>();
-        let parsed_list = Self::_parse_list(&mut rev_tokens)?;
-        return Ok(parsed_list);
+        let parsed_list = Self::parse_list(&mut rev_tokens)?;
+        Ok(parsed_list)
     }
 
-    fn _parse_list(tokens: &mut Vec<Token>) -> Result<Object, ParserError> {
-        let token = tokens.pop();
-        if token != Some(Token::LParen) {
+    fn parse_list(tokens: &mut Vec<Token>) -> Result<Object, ParserError> {
+        let mut parenthesis_counter = ParenthesisCounter::new();
+        let mut stack: Vec<Vec<Object>> = vec![vec![]];
+
+        while let Some(token) = tokens.pop() {
+            parenthesis_counter.compute(token.clone())?;
+            match token {
+                Token::LParen(_) => {
+                    // Create a new list and push to the stack
+                    stack.push(vec![]);
+                }
+                Token::RParen(_) => {
+                    // Pop the completed list
+                    if let Some(completed_list) = stack.pop() {
+                        if let Some(last) = stack.last_mut() {
+                            last.push(Object::List(completed_list));
+                        } else {
+                            return Ok(Object::List(completed_list));
+                        }
+                    }
+                }
+                Token::Integer(n) => {
+                    if let Some(last) = stack.last_mut() {
+                        last.push(Object::Integer(n.content));
+                    }
+                }
+                Token::Symbol(s) => {
+                    let content = s.content.clone();
+                    if
+                        (content.chars().next() == Some('"') &&
+                            content.chars().last() == Some('"')) ||
+                        (content.chars().next() == Some('\'') &&
+                            content.chars().last() == Some('\''))
+                    {
+                        if let Some(last) = stack.last_mut() {
+                            last.push(Object::String(content[1..content.len() - 1].to_string()));
+                        }
+                    } else {
+                        if let Some(last) = stack.last_mut() {
+                            last.push(Object::Symbol(content));
+                        }
+                    }
+                }
+            }
+        }
+
+        if !parenthesis_counter.is_balanced() {
+            let (ch, line) = parenthesis_counter.last_ch_and_line();
             return Err(ParserError {
-                err: format!("Did not find enough tokens"),
+                err: "Unmatched opening parenthesis".to_string(),
+                ch: ch,
+                line: line,
             });
         }
 
-        let mut list: Vec<Object> = vec![];
-
-        while !tokens.is_empty() {
-            let token = tokens.pop();
-            if token == None {
-                return Err(ParserError {
-                    err: format!("Did not find enough tokens"),
-                });
-            }
-            let t = token.unwrap();
-
-            match t {
-                Token::Integer(n) => list.push(Object::Integer(n)),
-                Token::Symbol(s) => {
-                    if
-                        (s.chars().next() == Some('"') && s.chars().last() == Some('"')) ||
-                        (s.chars().next() == Some('\'') && s.chars().last() == Some('\''))
-                    {
-                        list.push(Object::String(s.as_str()[1..s.len() - 1].to_string()));
-                    } else {
-                        list.push(Object::Symbol(s));
-                    }
-                }
-                Token::LParen => {
-                    tokens.push(Token::LParen);
-                    let sub_list = Self::_parse_list(tokens)?;
-                    list.push(sub_list);
-                }
-                Token::RParen => {
-                    return Ok(Object::List(list));
+        let mut final_list = stack.pop();
+        match final_list {
+            Some(ref mut list) => {
+                if list.len() == 1 {
+                    return Ok(list[0].clone());
+                } else {
+                    Ok(Object::Void)
                 }
             }
+            None => Ok(Object::Void),
         }
+    }
+}
 
-        return Ok(Object::List(list));
+struct ParenthesisCounter {
+    parens: Vec<Token>,
+}
+
+impl ParenthesisCounter {
+    pub fn new() -> Self {
+        ParenthesisCounter { parens: vec![] }
+    }
+
+    pub fn compute(&mut self, token: Token) -> Result<(), ParserError> {
+        match token {
+            Token::LParen(c) => {
+                self.parens.push(Token::LParen(c));
+            }
+            Token::RParen(c) => {
+                if self.parens.is_empty() {
+                    return Err(ParserError {
+                        err: "Unmatched closing parenthesis".to_string(),
+                        ch: c.ch,
+                        line: c.line,
+                    });
+                }
+                self.parens.pop();
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    pub fn last_ch_and_line(&self) -> (usize, usize) {
+        match self.parens.last() {
+            Some(Token::LParen(c)) => (c.ch, c.line),
+            Some(_) => (0, 0), // Unreachable code
+            None => (0, 0),
+        }
+    }
+
+    pub fn is_balanced(&self) -> bool {
+        self.parens.is_empty()
     }
 }
 
 #[derive(Debug)]
 pub struct ParserError {
     err: String,
+    ch: usize,
+    line: usize,
 }
-impl Display for ParserError {
+
+impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[ParserError]: {err}", err = self.err)
+        write!(f, "{line}:{ch} {err}", line = self.line, ch = self.ch, err = self.err)
     }
 }
 
-impl Display for Object {
+impl std::fmt::Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Object::Integer(n) => write!(f, "{}", n),

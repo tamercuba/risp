@@ -22,10 +22,7 @@ impl Evaluator {
             .set("str", Object::SysCall(SysCallWrapper::new("str", stdlib::to_str)));
         self.env
             .borrow_mut()
-            .set(
-                "concatenate",
-                Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str))
-            );
+            .set("concat", Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str)));
         self.env
             .borrow_mut()
             .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)));
@@ -35,7 +32,7 @@ impl Evaluator {
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
-        let tokens = Token::tokenize(statement).map_err(|e| format!("{}", e))?;
+        let tokens = Token::tokenize(statement);
         let parsed_list = Object::from_tokens(tokens);
         return match parsed_list {
             Ok(_) => self.eval_obj(&parsed_list.unwrap()),
@@ -346,8 +343,6 @@ impl Evaluator {
                 return sys_call.run(&args);
             }
             _ => {
-                println!("[NOT A FUNC]: {:?}", func);
-                println!("[ENV]: {:?}", self.env.borrow());
                 return Err(format!("Not a function: {}", func_name));
             }
         }

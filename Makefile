@@ -6,6 +6,8 @@ build_eval:  ## Build the risp_eval library
 test-eval: build_eval  ## Run tests for the risp_eval library
 	@cargo test --lib -p risp --verbose
 
+test-match: build_eval
+	@cargo test --lib -p risp -- $(t) --exact 
 test-cov: ## Run tests with coverage
 	@./.github/scripts/run-cov.sh
 

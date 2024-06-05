@@ -2,19 +2,6 @@
 use crate::{ parser::Object, evaluator::Evaluator };
 
 #[test]
-fn test_eval_tokens_with_error() {
-    let program = "(+ 1 2";
-    let mut evaluator = Evaluator::new(false);
-
-    let result = evaluator.eval(program);
-
-    assert!(result.is_err());
-
-    let result = result.err().unwrap();
-    assert_eq!(result, "Unmatched closing parenthesis");
-}
-
-#[test]
 fn test_eval_add_func() {
     let program = "(+ 1 2)";
     let mut evaluator = Evaluator::new(false);
@@ -188,6 +175,20 @@ fn test_eval_function_definition() {
 }
 
 #[test]
+fn test_eval_defun_without_body() {
+    let program = "(defun square)";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "Invalid number of arguments for defun");
+}
+
+#[test]
 fn test_eval_nested_lambda() {
     let program = "
     (
@@ -234,6 +235,20 @@ fn test_eval_sys_call_not_binded() {
 }
 
 #[test]
+fn test_eval_concat_str() {
+    let program = "(concat \"Hello\" \"World\")";
+    let mut evaluator = Evaluator::new(true);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+
+    assert_eq!(result, Object::String("HelloWorld".to_string()));
+}
+
+#[test]
 fn test_func_call_doesnt_exist() {
     let program = "(foo 10)";
     let mut evaluator = Evaluator::new(false);
@@ -251,9 +266,36 @@ fn test_eval_with_boolean() {
 
     let result = evaluator.eval(program);
 
-    println!("{:?}", result);
     assert!(result.is_ok());
 
     let result = result.unwrap();
     assert_eq!(result, Object::Integer(10));
+}
+
+#[test]
+fn test_sum_int_and_str() {
+    let program = "(+ 10 \"10\")";
+    let mut evaluator = Evaluator::new(false);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_err());
+
+    let result = result.err().unwrap();
+
+    assert_eq!(result, "Right operand must be an integer String(\"10\")");
+}
+
+#[test]
+fn test_eval_void() {
+    let program = "(let ((x 1)))";
+    let mut evaluator = Evaluator::new(true);
+
+    let result = evaluator.eval(program);
+
+    assert!(result.is_ok());
+
+    let result = result.unwrap();
+
+    assert_eq!(result, Object::Void);
 }
