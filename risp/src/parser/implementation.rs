@@ -44,11 +44,8 @@ impl Object {
                             return Ok(Object::List(completed_list));
                         }
                     } else {
-                        return Err(ParserError {
-                            err: "Unmatched closing parenthesis".to_string(),
-                            ch: c.ch,
-                            line: c.line,
-                        });
+                        // Unreachable code
+                        return Ok(Object::Void);
                     }
                 }
                 Token::Integer(n) => {
@@ -77,24 +74,12 @@ impl Object {
         }
 
         if !parenthesis_counter.is_balanced() {
-            let last_token = parenthesis_counter.last_char().unwrap();
-            match last_token {
-                Token::LParen(c) => {
-                    return Err(ParserError {
-                        err: "Unmatched opening parenthesis".to_string(),
-                        ch: c.ch,
-                        line: c.line,
-                    });
-                }
-                Token::RParen(c) => {
-                    return Err(ParserError {
-                        err: "Unmatched closing parenthesis".to_string(),
-                        ch: c.ch,
-                        line: c.line,
-                    });
-                }
-                _ => {}
-            }
+            let (ch, line) = parenthesis_counter.last_ch_and_line();
+            return Err(ParserError {
+                err: "Unmatched opening parenthesis".to_string(),
+                ch: ch,
+                line: line,
+            });
         }
 
         let mut final_list = stack.pop();
@@ -140,8 +125,12 @@ impl ParenthesisCounter {
         Ok(())
     }
 
-    pub fn last_char(&self) -> Option<&Token> {
-        self.parens.last()
+    pub fn last_ch_and_line(&self) -> (usize, usize) {
+        match self.parens.last() {
+            Some(Token::LParen(c)) => (c.ch, c.line),
+            Some(_) => (0, 0), // Unreachable code
+            None => (0, 0),
+        }
     }
 
     pub fn is_balanced(&self) -> bool {
