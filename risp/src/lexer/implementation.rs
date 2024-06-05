@@ -90,7 +90,7 @@ impl Debug for Token {
                     value = c.content
                 ),
             Token::LParen(c) => write!(f, "{line}:{ch} LParen", line = c.line, ch = c.ch),
-            Token::RParen(c) => write!(f, "{line}:{ch} RParen)", line = c.line, ch = c.ch),
+            Token::RParen(c) => write!(f, "{line}:{ch} RParen", line = c.line, ch = c.ch),
         }
     }
 }
@@ -161,16 +161,18 @@ impl Token {
     }
 
     fn parse_buffer(buffer: &str, tokens: &mut Vec<Token>, ch: &mut usize, line: usize) {
+        let buffer_size = buffer.len();
+        let current_pos = ch.clone() - buffer_size + 1;
         match buffer.is_empty() {
             true => (),
             false =>
                 match buffer.parse::<i64>() {
                     Ok(value) =>
-                        tokens.push(Token::Integer(Content::new(value, ch.clone(), line.clone()))),
+                        tokens.push(Token::Integer(Content::new(value, current_pos, line.clone()))),
                     Err(_) =>
                         tokens.push(
                             Token::Symbol(
-                                Content::new(String::from(buffer), ch.clone(), line.clone())
+                                Content::new(String::from(buffer), current_pos, line.clone())
                             )
                         ),
                 }
