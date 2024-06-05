@@ -3,17 +3,56 @@
 
 # RISP
 
-A simple Lisp interpreter written in Rust.
-> This project is a study case on [Vishal Patil](https://github.com/vishpat) book [lisp-rs](https://vishpat.github.io/lisp-rs/)
+## Description
 
-# Contents
+RISP is a personal study project aimed at learning and experimenting with building a Lisp-like interpreter in Rust. This project is not intended for production use and should not be considered stable or reliable for critical applications.
 
-TODO:
+## Modules
 
-# How to install
+### RISP Library
+The RISP library is the core component of the project, consisting of:
+- **Lexer**: Tokenizes the input strings.
+- **Parser**: Converts tokens to `Objects` like described by (Vishal Patil)[https://github.com/vishpat] in his book [Lisp interpreter in Rust](https://vishpat.github.io/lisp-rs/).
+- - [As soon as possible](https://github.com/tamercuba/risp/issues/8) ill implement an AST
+- **Evaluator**: Evaluates the ASTs and produces results.
 
-TODO: 
+### REPL
+The REPL (Read-Eval-Print Loop) provides an interactive interface to the RISP interpreter, allowing for direct input and immediate evaluation of RISP expressions.
 
-# How to use
+### Interpreter
+Coming soon: An interpreter capable of reading and executing `.risp` files.
 
-TODO: 
+## Building the Project
+
+To build and run the project, use the following commands:
+
+- **Run the REPL**:
+  ```bash
+  cargo repl
+  ```
+
+- **Build the REPL**:
+  ```bash
+  cargo build-repl
+  ```
+
+- **Build the RISP library**:
+  ```bash
+  cargo build-risp
+  ```
+
+- **Run all tests**:
+  ```bash
+  cargo test-lib
+  ```
+
+- **Run specific tests**:
+  ```bash
+  cargo test-match {param}
+  ```
+
+## Examples
+
+TODO
+
+---
