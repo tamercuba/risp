@@ -22,10 +22,7 @@ impl Evaluator {
             .set("str", Object::SysCall(SysCallWrapper::new("str", stdlib::to_str)));
         self.env
             .borrow_mut()
-            .set(
-                "concatenate",
-                Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str))
-            );
+            .set("concat", Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str)));
         self.env
             .borrow_mut()
             .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)));

@@ -28,14 +28,13 @@ impl Object {
         let mut stack: Vec<Vec<Object>> = vec![vec![]];
 
         while let Some(token) = tokens.pop() {
+            parenthesis_counter.compute(token.clone())?;
             match token {
-                Token::LParen(c) => {
-                    parenthesis_counter.compute(Token::LParen(c.clone()))?;
+                Token::LParen(_) => {
                     // Create a new list and push to the stack
                     stack.push(vec![]);
                 }
-                Token::RParen(c) => {
-                    parenthesis_counter.compute(Token::RParen(c.clone()))?;
+                Token::RParen(_) => {
                     // Pop the completed list
                     if let Some(completed_list) = stack.pop() {
                         if let Some(last) = stack.last_mut() {
@@ -43,9 +42,6 @@ impl Object {
                         } else {
                             return Ok(Object::List(completed_list));
                         }
-                    } else {
-                        // Unreachable code
-                        return Ok(Object::Void);
                     }
                 }
                 Token::Integer(n) => {

@@ -179,39 +179,3 @@ impl Token {
         }
     }
 }
-
-// #[derive(Debug)]
-// pub struct TokenError {
-//     value: String,
-//     ch: usize,
-//     line: usize,
-// }
-
-// impl Display for TokenError {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self.value.as_str() {
-//             "(" =>
-//                 write!(
-//                     f,
-//                     "{line}:{ch} Unmatched closing parenthesis",
-//                     line = self.line,
-//                     ch = self.ch
-//                 ),
-//             ")" =>
-//                 write!(
-//                     f,
-//                     "{line}:{ch} Unmatched opening parenthesis",
-//                     line = self.line,
-//                     ch = self.ch
-//                 ),
-//             _ =>
-//                 write!(
-//                     f,
-//                     "{line}:{ch} Unexpected character: {value}",
-//                     value = self.value,
-//                     line = self.line,
-//                     ch = self.ch
-//                 ),
-//         }
-//     }
-// }
