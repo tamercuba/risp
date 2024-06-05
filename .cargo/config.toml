@@ -1,0 +1,6 @@
+[alias]
+
+build-lib = "build -p risp" # Build the risp library
+test-lib = "test --lib -p risp --verbose" # Run the tests for the risp library
+test-match = "test --lib -p risp --verbose --" # Run the tests for the risp library that match the exact filter
+repl = "run -p repl" # Run Risp REPL
