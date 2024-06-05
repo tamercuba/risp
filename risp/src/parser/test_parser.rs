@@ -56,3 +56,35 @@ fn test_area_of_a_circle() {
         )
     );
 }
+
+#[test]
+fn test_parse_unbalanced_expression_whitout_closing() {
+    let program = "(+ 1 2";
+    let tokens = Token::tokenize(program);
+
+    assert_eq!(tokens.len(), 4);
+
+    let objs_list = Object::from_tokens(tokens.clone());
+
+    assert!(objs_list.is_err());
+
+    let err = objs_list.err().unwrap();
+
+    assert_eq!(format!("{}", err), "0:1 Unmatched opening parenthesis");
+}
+
+#[test]
+fn test_parse_unbalanced_expressions_with_extra_closing() {
+    let program = "(+ 1 2))";
+    let tokens = Token::tokenize(program);
+
+    assert_eq!(tokens.len(), 6);
+
+    let objs_list = Object::from_tokens(tokens.clone());
+
+    assert!(objs_list.is_err());
+
+    let err = objs_list.err().unwrap();
+
+    assert_eq!(format!("{}", err), "0:8 Unmatched closing parenthesis");
+}

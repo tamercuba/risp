@@ -1,20 +1,32 @@
-use std::fmt::Display;
+use std::fmt::{ Display, Debug };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Content<T> {
     pub content: T,
     pub ch: usize,
     pub line: usize,
 }
 
-impl<T> Display for Content<T> where T: Display {
+impl<T> Display for Content<T> where T: Debug {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{line}:{ch} {content}",
             line = self.line,
             ch = self.ch.clone(),
-            content = self.content
+            content = format!("{:?}", self.content)
+        )
+    }
+}
+
+impl<T> Debug for Content<T> where T: Debug {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{line}:{ch} {content}",
+            line = self.line,
+            ch = self.ch.clone(),
+            content = format!("{:?}", self.content)
         )
     }
 }
@@ -37,12 +49,50 @@ impl<T> Content<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Token {
     Integer(Content<i64>),
     Symbol(Content<String>),
     LParen(Content<()>),
     RParen(Content<()>),
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Integer(c) =>
+                write!(f, "{line}:{ch} Int({value})", line = c.line, ch = c.ch, value = c.content),
+            Token::Symbol(c) =>
+                write!(
+                    f,
+                    "{line}:{ch} Symbol({value})",
+                    line = c.line,
+                    ch = c.ch,
+                    value = c.content
+                ),
+            Token::LParen(c) => write!(f, "{line}:{ch} LParen", line = c.line, ch = c.ch),
+            Token::RParen(c) => write!(f, "{line}:{ch} RParen", line = c.line, ch = c.ch),
+        }
+    }
+}
+
+impl Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Integer(c) =>
+                write!(f, "{line}:{ch} Int({value})", line = c.line, ch = c.ch, value = c.content),
+            Token::Symbol(c) =>
+                write!(
+                    f,
+                    "{line}:{ch} Symbol({value})",
+                    line = c.line,
+                    ch = c.ch,
+                    value = c.content
+                ),
+            Token::LParen(c) => write!(f, "{line}:{ch} LParen", line = c.line, ch = c.ch),
+            Token::RParen(c) => write!(f, "{line}:{ch} RParen)", line = c.line, ch = c.ch),
+        }
+    }
 }
 
 impl Token {
