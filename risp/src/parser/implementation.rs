@@ -1,5 +1,5 @@
-use crate::lexer::Token;
 use crate::evaluator::SysCallWrapper;
+use crate::lexer::Token;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -51,14 +51,15 @@ impl Object {
                 }
                 Token::Symbol(s) => {
                     let content = s.content.clone();
-                    if
-                        (content.chars().next() == Some('"') &&
-                            content.chars().last() == Some('"')) ||
-                        (content.chars().next() == Some('\'') &&
-                            content.chars().last() == Some('\''))
-                    {
+                    let has_double_quotes =
+                        content.chars().next() == Some('"') && content.chars().last() == Some('"');
+                    let has_single_quote = content.chars().next() == Some('\'')
+                        && content.chars().last() == Some('\'');
+
+                    if has_double_quotes || has_single_quote {
                         if let Some(last) = stack.last_mut() {
-                            last.push(Object::String(content[1..content.len() - 1].to_string()));
+                            let content_without_quotes = content[1..content.len() - 1].to_string();
+                            last.push(Object::String(content_without_quotes));
                         }
                     } else {
                         if let Some(last) = stack.last_mut() {
@@ -73,8 +74,8 @@ impl Object {
             let (ch, line) = parenthesis_counter.last_ch_and_line();
             return Err(ParserError {
                 err: "Unmatched opening parenthesis".to_string(),
-                ch: ch,
-                line: line,
+                ch,
+                line,
             });
         }
 
@@ -143,7 +144,13 @@ pub struct ParserError {
 
 impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{line}:{ch} {err}", line = self.line, ch = self.ch, err = self.err)
+        write!(
+            f,
+            "{line}:{ch} {err}",
+            line = self.line,
+            ch = self.ch,
+            err = self.err
+        )
     }
 }
 

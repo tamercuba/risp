@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::{ parser::Object, evaluator::Evaluator };
+use crate::{evaluator::Evaluator, parser::Object};
 
 #[test]
 fn test_eval_add_func() {
@@ -110,7 +110,10 @@ fn test_eval_let_list_assignment_with_wrong_number_of_args() {
 
     let result = result.err().unwrap();
 
-    assert_eq!(result, "Invalid syntax, expected a list of 2 elements, got 1");
+    assert_eq!(
+        result,
+        "Invalid syntax, expected a list of 2 elements, got 1"
+    );
 }
 
 #[test]
