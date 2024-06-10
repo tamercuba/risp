@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::{ parser::Object, lexer::Token };
+use crate::{lexer::Token, parser::Object};
 
 #[test]
 fn test_parser_add() {
@@ -7,7 +7,11 @@ fn test_parser_add() {
     let list = Object::from_tokens(tokens).unwrap();
     assert_eq!(
         list,
-        Object::List(vec![Object::Symbol("+".to_string()), Object::Integer(1), Object::Integer(2)])
+        Object::List(vec![
+            Object::Symbol("+".to_string()),
+            Object::Integer(1),
+            Object::Integer(2)
+        ])
     )
 }
 
@@ -17,7 +21,11 @@ fn test_parse_list() {
     let list = Object::from_tokens(program).unwrap();
     assert_eq!(
         list,
-        Object::List(vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)])
+        Object::List(vec![
+            Object::Integer(1),
+            Object::Integer(2),
+            Object::Integer(3)
+        ])
     );
 }
 
@@ -33,37 +41,27 @@ fn test_area_of_a_circle() {
     let list = Object::from_tokens(tokens).unwrap();
     assert_eq!(
         list,
-        Object::List(
-            vec![
-                Object::List(
-                    vec![
-                        Object::Symbol("let".to_string()),
-                        Object::Symbol("r".to_string()),
-                        Object::Integer(10)
-                    ]
-                ),
-                Object::List(
-                    vec![
-                        Object::Symbol("let".to_string()),
-                        Object::Symbol("pi".to_string()),
-                        Object::Integer(314)
-                    ]
-                ),
-                Object::List(
-                    vec![
-                        Object::Symbol("*".to_string()),
-                        Object::Symbol("pi".to_string()),
-                        Object::List(
-                            vec![
-                                Object::Symbol("*".to_string()),
-                                Object::Symbol("r".to_string()),
-                                Object::Symbol("r".to_string())
-                            ]
-                        )
-                    ]
-                )
-            ]
-        )
+        Object::List(vec![
+            Object::List(vec![
+                Object::Symbol("let".to_string()),
+                Object::Symbol("r".to_string()),
+                Object::Integer(10)
+            ]),
+            Object::List(vec![
+                Object::Symbol("let".to_string()),
+                Object::Symbol("pi".to_string()),
+                Object::Integer(314)
+            ]),
+            Object::List(vec![
+                Object::Symbol("*".to_string()),
+                Object::Symbol("pi".to_string()),
+                Object::List(vec![
+                    Object::Symbol("*".to_string()),
+                    Object::Symbol("r".to_string()),
+                    Object::Symbol("r".to_string())
+                ])
+            ])
+        ])
     );
 }
 
@@ -115,6 +113,10 @@ fn test_parse_unbalanced_expressions_with_extra_closing() {
 
 #[test]
 fn test_list_dislay_trait() {
-    let list = Object::List(vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)]);
+    let list = Object::List(vec![
+        Object::Integer(1),
+        Object::Integer(2),
+        Object::Integer(3),
+    ]);
     assert_eq!(format!("{}", list), "(1 2 3)");
 }

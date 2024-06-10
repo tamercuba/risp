@@ -1,5 +1,5 @@
 use crate::parser::Object;
-use std::{ cell::RefCell, collections::HashMap, rc::Rc };
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct Env {
@@ -13,12 +13,10 @@ impl Env {
     }
 
     pub fn new_scope(parent: Rc<RefCell<Env>>) -> Rc<RefCell<Self>> {
-        Rc::new(
-            RefCell::new(Env {
-                parent: Some(parent),
-                vars: HashMap::new(),
-            })
-        )
+        Rc::new(RefCell::new(Env {
+            parent: Some(parent),
+            vars: HashMap::new(),
+        }))
     }
 
     pub fn remove_scope(&mut self) {
@@ -35,7 +33,10 @@ impl Env {
     pub fn get(&self, name: &str) -> Option<Object> {
         match self.vars.get(name) {
             Some(value) => Some(value.clone()),
-            None => self.parent.as_ref().and_then(|parent| parent.borrow().get(name)),
+            None => self
+                .parent
+                .as_ref()
+                .and_then(|parent| parent.borrow().get(name)),
         }
     }
 
