@@ -17,13 +17,7 @@ where
     T: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{lo}..{hi} {content}",
-            lo = self.span.lo,
-            hi = self.span.hi,
-            content = format!("{:?}", self.content)
-        )
+        write!(f, "{}..{} {:?}", self.span.lo, self.span.hi, self.content)
     }
 }
 
@@ -32,13 +26,7 @@ where
     T: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{lo}..{hi} {content}",
-            lo = self.span.lo,
-            hi = self.span.hi,
-            content = format!("{:?}", self.content)
-        )
+        write!(f, "{}..{} {:?}", self.span.lo, self.span.hi, self.content)
     }
 }
 
@@ -70,18 +58,32 @@ impl<T> Content<T> {
 
 #[derive(PartialEq, Clone)]
 pub enum Token {
-    Integer(Content<i64>),
+    Long(Content<i64>),
+    Double(Content<f64>),
     Symbol(Content<String>),
+    String(Content<String>),
+    Keyword(Content<String>),
     LParen(Content<()>),
     RParen(Content<()>),
+    LBracket(Content<()>),
+    RBracket(Content<()>),
+    LBrace(Content<()>),
+    RBrace(Content<()>),
 }
 
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Integer(c) => write!(
+            Token::Long(c) => write!(
                 f,
-                "{lo}..{hi} Int({value})",
+                "{lo}..{hi} Long({value})",
+                lo = c.span.lo,
+                hi = c.span.hi,
+                value = c.content
+            ),
+            Token::Double(c) => write!(
+                f,
+                "{lo}..{hi} Double({value})",
                 lo = c.span.lo,
                 hi = c.span.hi,
                 value = c.content
@@ -95,6 +97,25 @@ impl Display for Token {
             ),
             Token::LParen(c) => write!(f, "{lo}..{hi} LParen", lo = c.span.lo, hi = c.span.hi),
             Token::RParen(c) => write!(f, "{lo}..{hi} RParen", lo = c.span.lo, hi = c.span.hi),
+            Token::Keyword(c) => write!(
+                f,
+                "{lo}..{hi} Keyword({value})",
+                lo = c.span.lo,
+                hi = c.span.hi,
+                value = c.content
+            ),
+            Token::String(c) => write!(
+                f,
+                "{lo}..{hi} String({value})",
+                lo = c.span.lo,
+                hi = c.span.hi,
+                value = c.content
+            ),
+
+            Token::LBracket(c) => write!(f, "{lo}..{hi} LBracket", lo = c.span.lo, hi = c.span.hi),
+            Token::RBracket(c) => write!(f, "{lo}..{hi} RBracket", lo = c.span.lo, hi = c.span.hi),
+            Token::LBrace(c) => write!(f, "{lo}..{hi} LBrace", lo = c.span.lo, hi = c.span.hi),
+            Token::RBrace(c) => write!(f, "{lo}..{hi} RBrace", lo = c.span.lo, hi = c.span.hi),
         }
     }
 }
@@ -102,9 +123,16 @@ impl Display for Token {
 impl Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Integer(c) => write!(
+            Token::Long(c) => write!(
                 f,
-                "{lo}..{hi} Int({value})",
+                "{lo}..{hi} Long({value})",
+                lo = c.span.lo,
+                hi = c.span.hi,
+                value = c.content
+            ),
+            Token::Double(c) => write!(
+                f,
+                "{lo}..{hi} Double({value})",
                 lo = c.span.lo,
                 hi = c.span.hi,
                 value = c.content
@@ -118,6 +146,24 @@ impl Debug for Token {
             ),
             Token::LParen(c) => write!(f, "{lo}..{hi} LParen", lo = c.span.lo, hi = c.span.hi),
             Token::RParen(c) => write!(f, "{lo}..{hi} RParen", lo = c.span.lo, hi = c.span.hi),
+            Token::Keyword(c) => write!(
+                f,
+                "{lo}..{hi} Keyword({value})",
+                lo = c.span.lo,
+                hi = c.span.hi,
+                value = c.content
+            ),
+            Token::String(c) => write!(
+                f,
+                "{lo}..{hi} String({value})",
+                lo = c.span.lo,
+                hi = c.span.hi,
+                value = c.content
+            ),
+            Token::LBracket(c) => write!(f, "{lo}..{hi} LBracket", lo = c.span.lo, hi = c.span.hi),
+            Token::RBracket(c) => write!(f, "{lo}..{hi} RBracket", lo = c.span.lo, hi = c.span.hi),
+            Token::LBrace(c) => write!(f, "{lo}..{hi} LBrace", lo = c.span.lo, hi = c.span.hi),
+            Token::RBrace(c) => write!(f, "{lo}..{hi} RBrace", lo = c.span.lo, hi = c.span.hi),
         }
     }
 }

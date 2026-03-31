@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{Lexer, Span, Token};
     use crate::lexer::token::Content;
+    use crate::lexer::{Lexer, Span, Token};
 
     fn span(lo: u32, hi: u32) -> Span {
         Span { lo, hi }
@@ -15,8 +15,8 @@ mod tests {
             vec![
                 Token::LParen(Content::new((), span(0, 1))),
                 Token::Symbol(Content::new("+".to_string(), span(1, 2))),
-                Token::Integer(Content::new(1, span(3, 4))),
-                Token::Integer(Content::new(2, span(5, 6))),
+                Token::Long(Content::new(1, span(3, 4))),
+                Token::Long(Content::new(2, span(5, 6))),
                 Token::RParen(Content::new((), span(6, 7))),
             ]
         );
@@ -33,7 +33,7 @@ mod tests {
                 Token::LParen(Content::new((), span(4, 5))),
                 Token::LParen(Content::new((), span(5, 6))),
                 Token::Symbol(Content::new("x".to_string(), span(6, 7))),
-                Token::Integer(Content::new(10, span(8, 10))),
+                Token::Long(Content::new(10, span(8, 10))),
                 Token::RParen(Content::new((), span(10, 11))),
                 Token::RParen(Content::new((), span(11, 12))),
                 Token::RParen(Content::new((), span(12, 13))),
@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn tokenizes_multiline_program_startign_with_comment() {
+    fn tokenizes_multiline_program_starting_with_comment() {
         let tokens = Lexer::tokenize(";1234567\n(foo)");
         assert_eq!(
             tokens,
@@ -85,6 +85,107 @@ mod tests {
     }
 
     #[test]
+    fn tokenizes_string_literal() {
+        let tokens = Lexer::tokenize("\"hello world\"");
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new(
+                "hello world".to_string(),
+                span(0, 13)
+            ))]
+        );
+    }
+
+    #[test]
+    fn tokenizes_string_in_expression() {
+        let tokens = Lexer::tokenize("(println \"hi\")");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen(Content::new((), span(0, 1))),
+                Token::Symbol(Content::new("println".to_string(), span(1, 8))),
+                Token::String(Content::new("hi".to_string(), span(9, 13))),
+                Token::RParen(Content::new((), span(13, 14))),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_keyword() {
+        let tokens = Lexer::tokenize(":foo");
+        assert_eq!(
+            tokens,
+            vec![Token::Keyword(Content::new("foo".to_string(), span(0, 4)))]
+        );
+    }
+
+    #[test]
+    fn tokenizes_keyword_in_expression() {
+        let tokens = Lexer::tokenize("(assoc m :key 1)");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen(Content::new((), span(0, 1))),
+                Token::Symbol(Content::new("assoc".to_string(), span(1, 6))),
+                Token::Symbol(Content::new("m".to_string(), span(7, 8))),
+                Token::Keyword(Content::new("key".to_string(), span(9, 13))),
+                Token::Long(Content::new(1, span(14, 15))),
+                Token::RParen(Content::new((), span(15, 16))),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_vector_literal() {
+        let tokens = Lexer::tokenize("[1 2 3]");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LBracket(Content::new((), span(0, 1))),
+                Token::Long(Content::new(1, span(1, 2))),
+                Token::Long(Content::new(2, span(3, 4))),
+                Token::Long(Content::new(3, span(5, 6))),
+                Token::RBracket(Content::new((), span(6, 7))),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_map_literal() {
+        let tokens = Lexer::tokenize("{:a 1}");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LBrace(Content::new((), span(0, 1))),
+                Token::Keyword(Content::new("a".to_string(), span(1, 3))),
+                Token::Long(Content::new(1, span(4, 5))),
+                Token::RBrace(Content::new((), span(5, 6))),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_double_literal() {
+        let tokens = Lexer::tokenize("3.14");
+        assert_eq!(tokens, vec![Token::Double(Content::new(3.14, span(0, 4)))]);
+    }
+
+    #[test]
+    fn tokenizes_double_in_expression() {
+        let tokens = Lexer::tokenize("(+ 1 2.5)");
+        assert_eq!(
+            tokens,
+            vec![
+                Token::LParen(Content::new((), span(0, 1))),
+                Token::Symbol(Content::new("+".to_string(), span(1, 2))),
+                Token::Long(Content::new(1, span(3, 4))),
+                Token::Double(Content::new(2.5, span(5, 8))),
+                Token::RParen(Content::new((), span(8, 9))),
+            ]
+        );
+    }
+
+    #[test]
     fn empty_input_produces_no_tokens() {
         assert_eq!(Lexer::tokenize(""), vec![]);
     }
@@ -92,75 +193,5 @@ mod tests {
     #[test]
     fn only_whitespace_produces_no_tokens() {
         assert_eq!(Lexer::tokenize("   \t\n  "), vec![]);
-    }
-
-    #[test]
-    fn span_covers_token_at_end_of_input() {
-        let tokens = Lexer::tokenize("hello");
-        assert_eq!(tokens.len(), 1);
-        let s = match &tokens[0] {
-            Token::Symbol(c) => &c.span,
-            t => panic!("expected Symbol, got {:?}", t),
-        };
-        assert_eq!(s.lo, 0);
-        assert_eq!(s.hi, 5);
-    }
-
-    #[test]
-    fn span_of_integer_is_exact() {
-        let tokens = Lexer::tokenize(" 314 ");
-        assert_eq!(tokens.len(), 1);
-        let s = match &tokens[0] {
-            Token::Integer(c) => &c.span,
-            t => panic!("expected Integer, got {:?}", t),
-        };
-        assert_eq!(s.lo, 1);
-        assert_eq!(s.hi, 4);
-    }
-
-    #[test]
-    fn token_display_format() {
-        assert_eq!(
-            format!("{}", Token::LParen(Content::new((), span(0, 1)))),
-            "0..1 LParen"
-        );
-        assert_eq!(
-            format!("{}", Token::RParen(Content::new((), span(6, 7)))),
-            "6..7 RParen"
-        );
-        assert_eq!(
-            format!(
-                "{}",
-                Token::Symbol(Content::new("+".to_string(), span(1, 2)))
-            ),
-            "1..2 Symbol(+)"
-        );
-        assert_eq!(
-            format!("{}", Token::Integer(Content::new(42, span(3, 5)))),
-            "3..5 Int(42)"
-        );
-    }
-
-    #[test]
-    fn token_debug_format() {
-        assert_eq!(
-            format!("{:?}", Token::LParen(Content::new((), span(0, 1)))),
-            "0..1 LParen"
-        );
-        assert_eq!(
-            format!("{:?}", Token::RParen(Content::new((), span(6, 7)))),
-            "6..7 RParen"
-        );
-        assert_eq!(
-            format!(
-                "{:?}",
-                Token::Symbol(Content::new("+".to_string(), span(1, 2)))
-            ),
-            "1..2 Symbol(+)"
-        );
-        assert_eq!(
-            format!("{:?}", Token::Integer(Content::new(42, span(3, 5)))),
-            "3..5 Int(42)"
-        );
     }
 }

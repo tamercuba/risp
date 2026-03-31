@@ -44,27 +44,39 @@ impl Object {
                         }
                     }
                 }
-                Token::Integer(n) => {
+                Token::Long(n) => {
                     if let Some(last) = stack.last_mut() {
                         last.push(Object::Integer(n.content));
                     }
                 }
+                Token::Double(_) => {
+                    // TODO: implement float support in Object
+                }
+                Token::Keyword(k) => {
+                    if let Some(last) = stack.last_mut() {
+                        last.push(Object::Symbol(format!(":{}", k.content)));
+                    }
+                }
+                Token::String(s) => {
+                    if let Some(last) = stack.last_mut() {
+                        last.push(Object::String(s.content));
+                    }
+                }
+                Token::LBracket(_) | Token::RBracket(_) | Token::LBrace(_) | Token::RBrace(_) => {
+                    // TODO: implement vector and map parsing
+                }
                 Token::Symbol(s) => {
                     let content = s.content.clone();
-                    let has_double_quotes =
-                        content.chars().next() == Some('"') && content.chars().last() == Some('"');
-                    let has_single_quote = content.chars().next() == Some('\'')
-                        && content.chars().last() == Some('\'');
+                    let has_double_quotes = content.starts_with('"') && content.ends_with('"');
+                    let has_single_quote = content.starts_with('\'') && content.ends_with('\'');
 
                     if has_double_quotes || has_single_quote {
                         if let Some(last) = stack.last_mut() {
                             let content_without_quotes = content[1..content.len() - 1].to_string();
                             last.push(Object::String(content_without_quotes));
                         }
-                    } else {
-                        if let Some(last) = stack.last_mut() {
-                            last.push(Object::Symbol(content));
-                        }
+                    } else if let Some(last) = stack.last_mut() {
+                        last.push(Object::Symbol(content));
                     }
                 }
             }
@@ -81,7 +93,7 @@ impl Object {
         match final_list {
             Some(ref mut list) => {
                 if list.len() == 1 {
-                    return Ok(list[0].clone());
+                    Ok(list[0].clone())
                 } else {
                     Ok(Object::Void)
                 }

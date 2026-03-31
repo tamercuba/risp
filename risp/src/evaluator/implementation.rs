@@ -1,7 +1,7 @@
-use std::{ cell::RefCell, rc::Rc };
-use super::{ stdlib, SysCallWrapper };
+use super::{stdlib, SysCallWrapper};
+use std::{cell::RefCell, rc::Rc};
 
-use crate::{ env::Env, lexer::{Lexer, Token}, parser::Object };
+use crate::{env::Env, lexer::Lexer, parser::Object};
 
 pub struct Evaluator {
     env: Rc<RefCell<Env>>,
@@ -13,31 +13,37 @@ impl Evaluator {
         if with_stdlib {
             ev.add_stdlib();
         }
-        return ev;
+
+        ev
     }
 
     fn add_stdlib(&self) {
-        self.env
-            .borrow_mut()
-            .set("str", Object::SysCall(SysCallWrapper::new("str", stdlib::to_str)));
-        self.env
-            .borrow_mut()
-            .set("concat", Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str)));
-        self.env
-            .borrow_mut()
-            .set("first", Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)));
-        self.env
-            .borrow_mut()
-            .set("println", Object::SysCall(SysCallWrapper::new("println", stdlib::print_ln)));
+        self.env.borrow_mut().set(
+            "str",
+            Object::SysCall(SysCallWrapper::new("str", stdlib::to_str)),
+        );
+        self.env.borrow_mut().set(
+            "concat",
+            Object::SysCall(SysCallWrapper::new("concatenate", stdlib::concat_str)),
+        );
+        self.env.borrow_mut().set(
+            "first",
+            Object::SysCall(SysCallWrapper::new("first", stdlib::list_take_first)),
+        );
+        self.env.borrow_mut().set(
+            "println",
+            Object::SysCall(SysCallWrapper::new("println", stdlib::print_ln)),
+        );
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
         let tokens = Lexer::tokenize(statement);
         let parsed_list = Object::from_tokens(tokens);
-        return match parsed_list {
+
+        match parsed_list {
             Ok(_) => self.eval_obj(&parsed_list.unwrap()),
             Err(_) => Err(format!("{}", parsed_list.err().unwrap())),
-        };
+        }
     }
 
     fn eval_obj(&mut self, obj: &Object) -> Result<Object, String> {
@@ -45,16 +51,10 @@ impl Evaluator {
             Object::List(list) => {
                 let result = self.eval_list(list);
                 match result {
-                    Ok(evalued_list) => {
-                        match evalued_list {
-                            Object::List(result_list) => {
-                                return self.eval_list(&result_list);
-                            }
-                            _ => {
-                                return Ok(evalued_list);
-                            }
-                        }
-                    }
+                    Ok(evalued_list) => match evalued_list {
+                        Object::List(result_list) => self.eval_list(&result_list),
+                        _ => Ok(evalued_list),
+                    },
                     Err(_) => result,
                 }
             }
@@ -65,13 +65,13 @@ impl Evaluator {
             Object::Bool(_) => Ok(obj.clone()),
             Object::Integer(n) => Ok(Object::Integer(*n)),
             Object::Symbol(s) => self.eval_symbol(s),
-            _ => { Err(format!("Invalid object: {:?}", obj)) }
+            _ => Err(format!("Invalid object: {:?}", obj)),
         }
     }
 
-    fn eval_function(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_function(&mut self, list: &[Object]) -> Result<Object, String> {
         if list.len() != 4 {
-            return Err(format!("Invalid number of arguments for defun"));
+            return Err("Invalid number of arguments for defun".to_string());
         }
         match &list[1] {
             Object::Symbol(func_name) => {
@@ -82,51 +82,46 @@ impl Evaluator {
                             match param {
                                 Object::Symbol(s) => params.push(s.clone()),
                                 _ => {
-                                    return Err(format!("Invalid defun parameter"));
+                                    return Err("Invalid defun parameter".to_string());
                                 }
                             }
                         }
                         params
                     }
                     _ => {
-                        return Err(format!("Invalid defun"));
+                        return Err("Invalid defun".to_string());
                     }
                 };
 
                 let body = match &list[3] {
                     Object::List(list) => list.clone(),
                     _ => {
-                        return Err(format!("Invalid defun"));
+                        return Err("Invalid defun".to_string());
                     }
                 };
                 let f = Object::Function(params, body);
                 self.env.borrow_mut().set(func_name.as_str(), f);
                 Ok(Object::Void)
             }
-            _ => {
-                return Err(format!("Invalid defun"));
-            }
+            _ => Err("Invalid defun".to_string()),
         }
     }
 
     fn eval_list(&mut self, list: &Vec<Object>) -> Result<Object, String> {
         let head = &list[0];
         match head {
-            Object::Symbol(s) =>
-                match s.as_str() {
-                    // TODO: Add more binary operators
-                    "+" | "-" | "*" | "/" | "<" | ">" | "=" | "!=" => {
-                        return self.eval_binary_op(&list);
-                    }
-                    "let" => self.eval_let(&list),
-                    "defun" => self.eval_function(&list),
-                    "if" => self.eval_if(&list),
-                    "lambda" => self.eval_lambda(&list),
-                    "true" | "false" => Ok(Object::Bool(s == "true")),
-                    // TODO: Add a basic std lib
-                    _ => self.eval_func_call(&s, &list),
-                }
-            Object::Lambda(params, body) => self.eval_anon_func_call(params, body, &list),
+            Object::Symbol(s) => match s.as_str() {
+                // TODO: Add more binary operators
+                "+" | "-" | "*" | "/" | "<" | ">" | "=" | "!=" => self.eval_binary_op(list),
+                "let" => self.eval_let(list),
+                "defun" => self.eval_function(list),
+                "if" => self.eval_if(list),
+                "lambda" => self.eval_lambda(list),
+                "true" | "false" => Ok(Object::Bool(s == "true")),
+                // TODO: Add a basic std lib
+                _ => self.eval_func_call(s, list),
+            },
+            Object::Lambda(params, body) => self.eval_anon_func_call(params, body, list),
             _ => {
                 let mut new_list = Vec::new();
                 for obj in list {
@@ -158,9 +153,9 @@ impl Evaluator {
         }
     }
 
-    fn eval_binary_op(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_binary_op(&mut self, list: &[Object]) -> Result<Object, String> {
         if list.len() != 3 {
-            return Err(format!("Invalid number of arguments for binary operation"));
+            return Err("Invalid number of arguments for binary operation".to_string());
         }
 
         let operator = list[0].clone();
@@ -180,32 +175,30 @@ impl Evaluator {
         };
 
         match operator {
-            Object::Symbol(s) =>
-                match s.as_str() {
-                    "+" => Ok(Object::Integer(left_val + right_val)),
-                    "-" => Ok(Object::Integer(left_val - right_val)),
-                    "*" => Ok(Object::Integer(left_val * right_val)),
-                    "/" => {
-                        match right_val {
-                            0 => {
-                                return Err(format!("Division by zero"));
-                            }
-                            _ => Ok(Object::Integer(left_val / right_val)),
-                        }
-                    }
-                    "<" => Ok(Object::Bool(left_val < right_val)),
-                    ">" => Ok(Object::Bool(left_val > right_val)),
-                    "=" => Ok(Object::Bool(left_val == right_val)),
-                    "!=" => Ok(Object::Bool(left_val != right_val)),
-                    _ => Err(format!("Invalid infix operator: {}", s)),
-                }
-            _ => Err(format!("Operator must be a symbol")),
+            Object::Symbol(s) => match s.as_str() {
+                "+" => Ok(Object::Integer(left_val + right_val)),
+                "-" => Ok(Object::Integer(left_val - right_val)),
+                "*" => Ok(Object::Integer(left_val * right_val)),
+                "/" => match right_val {
+                    0 => Err("Division by zero".to_string()),
+                    _ => Ok(Object::Integer(left_val / right_val)),
+                },
+                "<" => Ok(Object::Bool(left_val < right_val)),
+                ">" => Ok(Object::Bool(left_val > right_val)),
+                "=" => Ok(Object::Bool(left_val == right_val)),
+                "!=" => Ok(Object::Bool(left_val != right_val)),
+                _ => Err(format!("Invalid infix operator: {}", s)),
+            },
+            _ => Err("Operator must be a symbol".to_string()),
         }
     }
 
-    fn eval_let(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_let(&mut self, list: &[Object]) -> Result<Object, String> {
         if list.len() < 2 {
-            return Err(format!("Expect at least one argument for let, got {}", list.len() - 1));
+            return Err(format!(
+                "Expect at least one argument for let, got {}",
+                list.len() - 1
+            ));
         }
 
         let mut result: Result<Object, String> = Ok(Object::Void);
@@ -214,23 +207,22 @@ impl Evaluator {
                 // Let is a local definition keyword
                 // So if we have a single symbol and a single value
                 // like (let x 10), there is nothing to do unless return Void
-                return Ok(Object::Void);
+                Ok(Object::Void)
             }
-            (Object::Symbol(s), None) => {
-                return Err(format!("Invalid syntax, there is no value to assign to {}", s));
-            }
+            (Object::Symbol(s), None) => Err(format!(
+                "Invalid syntax, there is no value to assign to {}",
+                s
+            )),
             (Object::List(l), &body) => {
                 self.env = Env::new_scope(self.env.clone());
                 for obj in l {
                     match obj {
                         Object::List(arg) => {
                             if arg.len() != 2 {
-                                return Err(
-                                    format!(
-                                        "Invalid syntax, expected a list of 2 elements, got {}",
-                                        arg.len()
-                                    )
-                                );
+                                return Err(format!(
+                                    "Invalid syntax, expected a list of 2 elements, got {}",
+                                    arg.len()
+                                ));
                             }
                             match &arg[0] {
                                 Object::Symbol(s) => {
@@ -238,9 +230,10 @@ impl Evaluator {
                                     self.env.borrow_mut().set(s.clone().as_str(), val);
                                 }
                                 _ => {
-                                    return Err(
-                                        format!("{} is a invalid symbol to let assignment", arg[0])
-                                    );
+                                    return Err(format!(
+                                        "{} is a invalid symbol to let assignment",
+                                        arg[0]
+                                    ));
                                 }
                             }
                         }
@@ -248,46 +241,39 @@ impl Evaluator {
                             return Err(format!("Invalid syntax, expected a list, got {}", obj));
                         }
                     }
-                    match body {
-                        Some(b) => {
-                            result = self.eval_obj(b);
-                        }
-                        None => {}
+                    if let Some(b) = body {
+                        result = self.eval_obj(b);
                     }
                 }
                 self.env.borrow_mut().remove_scope();
-                return result;
+                result
             }
-            _ => {
-                return Err(
-                    format!(
-                        "Invalid assignment syntax for {} with value {}",
-                        list[1],
-                        list.get(2).unwrap_or(&Object::Void)
-                    )
-                );
-            }
+            _ => Err(format!(
+                "Invalid assignment syntax for {} with value {}",
+                list[1],
+                list.get(2).unwrap_or(&Object::Void)
+            )),
         }
     }
 
-    fn eval_if(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_if(&mut self, list: &[Object]) -> Result<Object, String> {
         if list.len() != 4 {
-            return Err(format!("Invalid number of arguments for if"));
+            return Err("Invalid number of arguments for if".to_string());
         }
 
         let cond_obj = self.eval_obj(&list[1])?;
         let cond = match cond_obj {
             Object::Bool(b) => b,
             _ => {
-                return Err(format!("Invalid condition"));
+                return Err("Invalid condition".to_string());
             }
         };
 
-        let return_idx = if cond == true { 2 } else { 3 };
-        return self.eval_obj(&list[return_idx]);
+        let return_idx = if cond { 2 } else { 3 };
+        self.eval_obj(&list[return_idx])
     }
 
-    fn eval_lambda(&mut self, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_lambda(&mut self, list: &[Object]) -> Result<Object, String> {
         let params = match &list[1] {
             Object::List(list) => {
                 let mut params = Vec::new();
@@ -295,28 +281,28 @@ impl Evaluator {
                     match param {
                         Object::Symbol(s) => params.push(s.clone()),
                         _ => {
-                            return Err(format!("Invalid lambda parameter"));
+                            return Err("Invalid lambda parameter".to_string());
                         }
                     }
                 }
                 params
             }
             _ => {
-                return Err(format!("Invalid lambda"));
+                return Err("Invalid lambda".to_string());
             }
         };
 
         let body = match &list[2] {
             Object::List(list) => list.clone(),
             _ => {
-                return Err(format!("Invalid lambda"));
+                return Err("Invalid lambda".to_string());
             }
         };
         let result = Object::Lambda(params, body);
         Ok(result)
     }
 
-    fn eval_func_call(&mut self, func_name: &str, list: &Vec<Object>) -> Result<Object, String> {
+    fn eval_func_call(&mut self, func_name: &str, list: &[Object]) -> Result<Object, String> {
         let func_result = self.env.borrow_mut().get(func_name);
         if func_result.is_none() {
             return Err(format!("Function not defined: {}", func_name));
@@ -332,7 +318,7 @@ impl Evaluator {
                 }
                 let result = self.eval_obj(&Object::List(body));
                 self.env.borrow_mut().remove_scope();
-                return result;
+                result
             }
             Object::SysCall(sys_call) => {
                 let mut args = Vec::new();
@@ -340,22 +326,20 @@ impl Evaluator {
                     let val = self.eval_obj(arg)?;
                     args.push(val.clone());
                 }
-                return sys_call.run(&args);
+                sys_call.run(&args)
             }
-            _ => {
-                return Err(format!("Not a function: {}", func_name));
-            }
+            _ => Err(format!("Not a function: {}", func_name)),
         }
     }
 
     fn eval_anon_func_call(
         &mut self,
-        params: &Vec<String>,
-        body: &Vec<Object>,
-        list: &Vec<Object>
+        params: &[String],
+        body: &[Object],
+        list: &[Object],
     ) -> Result<Object, String> {
         if params.len() != list.len() - 1 {
-            return Err(format!("Invalid number of arguments for lambda"));
+            return Err("Invalid number of arguments for lambda".to_string());
         }
 
         self.env = Env::new_scope(self.env.clone());
@@ -363,8 +347,8 @@ impl Evaluator {
             let val = self.eval_obj(&list[i + 1])?;
             self.env.borrow_mut().set(param, val);
         }
-        let result = self.eval_obj(&Object::List(body.clone()));
+        let result = self.eval_obj(&Object::List(body.to_vec()));
         self.env.borrow_mut().remove_scope();
-        return result;
+        result
     }
 }

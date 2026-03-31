@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::{lexer::{Lexer, Token}, parser::Object};
+use crate::{lexer::Lexer, parser::Object};
 
 #[test]
 fn test_parser_add() {
