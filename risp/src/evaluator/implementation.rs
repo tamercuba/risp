@@ -1,7 +1,7 @@
 use std::{ cell::RefCell, rc::Rc };
 use super::{ stdlib, SysCallWrapper };
 
-use crate::{ env::Env, lexer::Token, parser::Object };
+use crate::{ env::Env, lexer::{Lexer, Token}, parser::Object };
 
 pub struct Evaluator {
     env: Rc<RefCell<Env>>,
@@ -32,7 +32,7 @@ impl Evaluator {
     }
 
     pub fn eval(&mut self, statement: &str) -> Result<Object, String> {
-        let tokens = Token::tokenize(statement);
+        let tokens = Lexer::tokenize(statement);
         let parsed_list = Object::from_tokens(tokens);
         return match parsed_list {
             Ok(_) => self.eval_obj(&parsed_list.unwrap()),

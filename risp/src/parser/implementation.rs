@@ -1,5 +1,5 @@
 use crate::evaluator::SysCallWrapper;
-use crate::lexer::Token;
+use crate::lexer::{Span, Token};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -71,11 +71,9 @@ impl Object {
         }
 
         if !parenthesis_counter.is_balanced() {
-            let (ch, line) = parenthesis_counter.last_ch_and_line();
             return Err(ParserError {
                 err: "Unmatched opening parenthesis".to_string(),
-                ch,
-                line,
+                span: parenthesis_counter.last_span(),
             });
         }
 
@@ -111,8 +109,7 @@ impl ParenthesisCounter {
                 if self.parens.is_empty() {
                     return Err(ParserError {
                         err: "Unmatched closing parenthesis".to_string(),
-                        ch: c.ch,
-                        line: c.line,
+                        span: c.span.clone(),
                     });
                 }
                 self.parens.pop();
@@ -122,11 +119,10 @@ impl ParenthesisCounter {
         Ok(())
     }
 
-    pub fn last_ch_and_line(&self) -> (usize, usize) {
+    pub fn last_span(&self) -> Span {
         match self.parens.last() {
-            Some(Token::LParen(c)) => (c.ch, c.line),
-            Some(_) => (0, 0), // Unreachable code
-            None => (0, 0),
+            Some(Token::LParen(c)) => c.span.clone(),
+            _ => Span { lo: 0, hi: 0 },
         }
     }
 
@@ -138,17 +134,16 @@ impl ParenthesisCounter {
 #[derive(Debug)]
 pub struct ParserError {
     err: String,
-    ch: usize,
-    line: usize,
+    span: Span,
 }
 
 impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{line}:{ch} {err}",
-            line = self.line,
-            ch = self.ch,
+            "@{lo}..{hi} {err}",
+            lo = self.span.lo,
+            hi = self.span.hi,
             err = self.err
         )
     }

@@ -1,9 +1,9 @@
 #[cfg(test)]
-use crate::{lexer::Token, parser::Object};
+use crate::{lexer::{Lexer, Token}, parser::Object};
 
 #[test]
 fn test_parser_add() {
-    let tokens = Token::tokenize("(+ 1 2)");
+    let tokens = Lexer::tokenize("(+ 1 2)");
     let list = Object::from_tokens(tokens).unwrap();
     assert_eq!(
         list,
@@ -17,7 +17,7 @@ fn test_parser_add() {
 
 #[test]
 fn test_parse_list() {
-    let program = Token::tokenize("(1 2 3)");
+    let program = Lexer::tokenize("(1 2 3)");
     let list = Object::from_tokens(program).unwrap();
     assert_eq!(
         list,
@@ -36,7 +36,7 @@ fn test_area_of_a_circle() {
         (let pi 314)
         (* pi (* r r))
     )";
-    let tokens = Token::tokenize(program);
+    let tokens = Lexer::tokenize(program);
 
     let list = Object::from_tokens(tokens).unwrap();
     assert_eq!(
@@ -68,7 +68,7 @@ fn test_area_of_a_circle() {
 #[test]
 fn test_parse_unbalanced_expression_whitout_closing() {
     let program = "(+ 1 2";
-    let tokens = Token::tokenize(program);
+    let tokens = Lexer::tokenize(program);
 
     assert_eq!(tokens.len(), 4);
 
@@ -78,12 +78,12 @@ fn test_parse_unbalanced_expression_whitout_closing() {
 
     let err = objs_list.err().unwrap();
 
-    assert_eq!(format!("{}", err), "0:1 Unmatched opening parenthesis");
+    assert_eq!(format!("{}", err), "@0..1 Unmatched opening parenthesis");
 }
 #[test]
 fn test_unbalanced_single_r_paren() {
     let program = ")";
-    let tokens = Token::tokenize(program);
+    let tokens = Lexer::tokenize(program);
 
     assert_eq!(tokens.len(), 1);
 
@@ -93,12 +93,12 @@ fn test_unbalanced_single_r_paren() {
 
     let err = objs_list.err().unwrap();
 
-    assert_eq!(format!("{}", err), "0:1 Unmatched closing parenthesis");
+    assert_eq!(format!("{}", err), "@0..1 Unmatched closing parenthesis");
 }
 #[test]
 fn test_parse_unbalanced_expressions_with_extra_closing() {
     let program = "(+ 1 2))";
-    let tokens = Token::tokenize(program);
+    let tokens = Lexer::tokenize(program);
 
     assert_eq!(tokens.len(), 6);
 
@@ -108,7 +108,7 @@ fn test_parse_unbalanced_expressions_with_extra_closing() {
 
     let err = objs_list.err().unwrap();
 
-    assert_eq!(format!("{}", err), "0:8 Unmatched closing parenthesis");
+    assert_eq!(format!("{}", err), "@7..8 Unmatched closing parenthesis");
 }
 
 #[test]
