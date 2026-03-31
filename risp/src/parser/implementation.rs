@@ -1,5 +1,6 @@
 use crate::evaluator::SysCallWrapper;
 use crate::lexer::{Span, Token};
+use crate::parser::ast::{Expr, ParseError};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -181,4 +182,8 @@ impl std::fmt::Display for Object {
             _ => Ok(()),
         }
     }
+}
+
+pub fn parse(tokens: Vec<Token>) -> Result<Vec<Expr>, ParseError> {
+    Ok([])
 }
