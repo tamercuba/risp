@@ -6,6 +6,15 @@ pub struct Span {
     pub hi: u32,
 }
 
+impl Span {
+    pub fn full(&self, other: Self) -> Self {
+        Self {
+            lo: self.lo,
+            hi: other.hi,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Content<T> {
     pub content: T,

@@ -10,9 +10,9 @@ pub enum ExprKind {
     Keyword(String),
     Symbol(String),
 
-    List(Vec<ExprKind>),
-    Vector(Vec<ExprKind>),
-    Map(Vec<(ExprKind, ExprKind)>),
+    List(Vec<Expr>),
+    Vector(Vec<Expr>),
+    Map(Vec<(Expr, Expr)>),
 }
 
 #[derive(Debug, Clone)]
@@ -31,16 +31,4 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind
     }
-}
-
-#[derive(Debug)]
-pub enum ParseError {
-    UnmatchedOpen(Span),
-    UnmatchedClose(char, Span),
-    MismatchedDelimiter {
-        expected: char,
-        found: char,
-        span: Span,
-    },
-    OddMapElements(Span),
 }
