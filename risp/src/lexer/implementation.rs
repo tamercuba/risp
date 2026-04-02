@@ -1,181 +1,127 @@
-use std::fmt::{ Display, Debug };
+use super::token::{Content, Span, Token};
 
-#[derive(Clone)]
-pub struct Content<T> {
-    pub content: T,
-    pub ch: usize,
-    pub line: usize,
+#[derive(Default)]
+pub struct Lexer {
+    tokens: Vec<Token>,
+    buffer: String,
+    buffer_lo: u32,
+    in_comment: bool,
+    in_string: bool,
 }
 
-impl<T> Display for Content<T> where T: Debug {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{line}:{ch} {content}",
-            line = self.line,
-            ch = self.ch.clone(),
-            content = format!("{:?}", self.content)
-        )
-    }
-}
+type DelimiterVariant = fn(Content<()>) -> Token;
 
-impl<T> Debug for Content<T> where T: Debug {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{line}:{ch} {content}",
-            line = self.line,
-            ch = self.ch.clone(),
-            content = format!("{:?}", self.content)
-        )
-    }
-}
-
-impl<T> PartialEq for Content<T> where T: PartialEq {
-    fn eq(&self, other: &Self) -> bool {
-        self.content == other.content
-    }
-}
-
-impl<T> Eq for Content<T> where T: Eq {}
-
-impl<T> Content<T> {
-    pub fn new(content: T, ch: usize, line: usize) -> Self {
-        Content {
-            content,
-            ch,
-            line,
-        }
-    }
-}
-
-#[derive(PartialEq, Clone)]
-pub enum Token {
-    Integer(Content<i64>),
-    Symbol(Content<String>),
-    LParen(Content<()>),
-    RParen(Content<()>),
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Token::Integer(c) =>
-                write!(f, "{line}:{ch} Int({value})", line = c.line, ch = c.ch, value = c.content),
-            Token::Symbol(c) =>
-                write!(
-                    f,
-                    "{line}:{ch} Symbol({value})",
-                    line = c.line,
-                    ch = c.ch,
-                    value = c.content
-                ),
-            Token::LParen(c) => write!(f, "{line}:{ch} LParen", line = c.line, ch = c.ch),
-            Token::RParen(c) => write!(f, "{line}:{ch} RParen", line = c.line, ch = c.ch),
-        }
-    }
-}
-
-impl Debug for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Token::Integer(c) =>
-                write!(f, "{line}:{ch} Int({value})", line = c.line, ch = c.ch, value = c.content),
-            Token::Symbol(c) =>
-                write!(
-                    f,
-                    "{line}:{ch} Symbol({value})",
-                    line = c.line,
-                    ch = c.ch,
-                    value = c.content
-                ),
-            Token::LParen(c) => write!(f, "{line}:{ch} LParen", line = c.line, ch = c.ch),
-            Token::RParen(c) => write!(f, "{line}:{ch} RParen", line = c.line, ch = c.ch),
-        }
-    }
-}
-
-impl Token {
+impl Lexer {
     pub fn tokenize(program: &str) -> Vec<Token> {
-        let mut tokens: Vec<Token> = vec![];
+        let mut lexer = Lexer::default();
 
-        let mut line: usize = 0;
+        for (ch_offset, ch) in program.char_indices() {
+            if lexer.in_comment {
+                if ch == '\n' || ch == '\r' {
+                    lexer.in_comment = false;
+                }
+                continue;
+            }
+            if lexer.in_string && ch != '"' {
+                lexer.push_to_buffer(ch, ch_offset);
+                continue;
+            }
 
-        let lines = program.lines();
-        for file_line in lines {
-            let mut new_tokens = Self::parse_line(&file_line, line);
-            tokens.append(&mut new_tokens);
-            line += 1;
-        }
-
-        return tokens;
-    }
-
-    fn parse_line(program: &str, line: usize) -> Vec<Token> {
-        let mut tokens: Vec<Token> = vec![];
-        let mut ch: usize = 0;
-        let mut chars = program.chars().peekable();
-        let mut current_buffer = String::new();
-
-        while let Some(&current) = chars.peek() {
-            match current {
+            match ch {
                 '(' => {
-                    if !current_buffer.is_empty() {
-                        Self::parse_buffer(&current_buffer.clone(), &mut tokens, &mut ch, line);
-                        current_buffer.clear();
-                    }
-                    ch += 1;
-                    tokens.push(Token::LParen(Content::new((), ch.clone(), line.clone())));
-                    chars.next();
+                    lexer.push_delimiter(Token::LParen, ch_offset);
                 }
                 ')' => {
-                    if !current_buffer.is_empty() {
-                        Self::parse_buffer(&current_buffer.clone(), &mut tokens, &mut ch, line);
-                        current_buffer.clear();
-                    }
-                    ch += 1;
-                    tokens.push(Token::RParen(Content::new((), ch.clone(), line.clone())));
-                    chars.next();
+                    lexer.push_delimiter(Token::RParen, ch_offset);
                 }
-                ' ' => {
-                    if !current_buffer.is_empty() {
-                        let value = current_buffer.clone();
-                        Self::parse_buffer(&value, &mut tokens, &mut ch, line);
-                        current_buffer.clear();
+                '{' => {
+                    lexer.push_delimiter(Token::LBrace, ch_offset);
+                }
+                '}' => {
+                    lexer.push_delimiter(Token::RBrace, ch_offset);
+                }
+                '[' => {
+                    lexer.push_delimiter(Token::LBracket, ch_offset);
+                }
+                ']' => {
+                    lexer.push_delimiter(Token::RBracket, ch_offset);
+                }
+                ' ' | '\t' | '\n' | '\r' => {
+                    lexer.flush_buffer(ch_offset);
+                }
+                ';' => {
+                    lexer.flush_buffer(ch_offset);
+                    lexer.in_comment = true;
+                }
+                '"' => {
+                    if lexer.in_string {
+                        lexer.flush_buffer(ch_offset + 1);
+                        lexer.in_string = false;
+                    } else {
+                        lexer.push_to_buffer(ch, ch_offset);
+                        lexer.in_string = true;
                     }
-                    ch += 1;
-                    chars.next();
                 }
                 _ => {
-                    current_buffer.push(current);
-                    ch += 1;
-                    chars.next();
+                    lexer.push_to_buffer(ch, ch_offset);
                 }
             }
         }
-        if !current_buffer.is_empty() {
-            let value = current_buffer.clone();
-            Self::parse_buffer(&value, &mut tokens, &mut ch, line);
-        }
-        tokens
+        lexer.flush_buffer(program.len());
+        lexer.tokens
     }
 
-    fn parse_buffer(buffer: &str, tokens: &mut Vec<Token>, ch: &mut usize, line: usize) {
-        let buffer_size = buffer.len();
-        let current_pos = ch.clone() - buffer_size + 1;
-        match buffer.is_empty() {
-            true => (),
-            false =>
-                match buffer.parse::<i64>() {
-                    Ok(value) =>
-                        tokens.push(Token::Integer(Content::new(value, current_pos, line.clone()))),
-                    Err(_) =>
-                        tokens.push(
-                            Token::Symbol(
-                                Content::new(String::from(buffer), current_pos, line.clone())
-                            )
-                        ),
-                }
+    fn push_delimiter(&mut self, variant: DelimiterVariant, ch_offset: usize) {
+        self.flush_buffer(ch_offset);
+        self.push_token(variant(Content::new((), Span::at(ch_offset))));
+    }
+
+    fn flush_buffer(&mut self, hi: usize) {
+        if self.buffer.is_empty() {
+            return;
         }
+        let span = Span {
+            lo: self.buffer_lo,
+            hi: hi as u32,
+        };
+        let token = self.classify_buffer(span);
+
+        self.push_token(token);
+        self.buffer.clear();
+    }
+
+    fn classify_buffer(&self, span: Span) -> Token {
+        None.or_else(|| {
+            self.in_string
+                .then(|| Token::String(Content::new(self.buffer[1..].to_string(), span.clone())))
+        })
+        .or_else(|| {
+            self.buffer
+                .starts_with(':')
+                .then(|| Token::Keyword(Content::new(self.buffer[1..].to_string(), span.clone())))
+        })
+        .or_else(|| {
+            self.buffer
+                .parse::<i64>()
+                .ok()
+                .map(|v| Token::Long(Content::new(v, span.clone())))
+        })
+        .or_else(|| {
+            self.buffer
+                .parse::<f64>()
+                .ok()
+                .map(|v| Token::Double(Content::new(v, span.clone())))
+        })
+        .unwrap_or_else(|| Token::Symbol(Content::new(self.buffer.clone(), span)))
+    }
+    fn push_to_buffer(&mut self, ch: char, offset: usize) {
+        if self.buffer.is_empty() {
+            self.buffer_lo = offset as u32;
+        }
+        self.buffer.push(ch);
+    }
+
+    fn push_token(&mut self, token: Token) {
+        self.tokens.push(token);
     }
 }

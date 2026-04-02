@@ -1,5 +1,5 @@
 use crate::evaluator::SysCallWrapper;
-use crate::lexer::Token;
+use crate::lexer::{Span, Token};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -44,38 +44,48 @@ impl Object {
                         }
                     }
                 }
-                Token::Integer(n) => {
+                Token::Long(n) => {
                     if let Some(last) = stack.last_mut() {
                         last.push(Object::Integer(n.content));
                     }
                 }
+                Token::Double(_) => {
+                    // TODO: implement float support in Object
+                }
+                Token::Keyword(k) => {
+                    if let Some(last) = stack.last_mut() {
+                        last.push(Object::Symbol(format!(":{}", k.content)));
+                    }
+                }
+                Token::String(s) => {
+                    if let Some(last) = stack.last_mut() {
+                        last.push(Object::String(s.content));
+                    }
+                }
+                Token::LBracket(_) | Token::RBracket(_) | Token::LBrace(_) | Token::RBrace(_) => {
+                    // TODO: implement vector and map parsing
+                }
                 Token::Symbol(s) => {
                     let content = s.content.clone();
-                    let has_double_quotes =
-                        content.chars().next() == Some('"') && content.chars().last() == Some('"');
-                    let has_single_quote = content.chars().next() == Some('\'')
-                        && content.chars().last() == Some('\'');
+                    let has_double_quotes = content.starts_with('"') && content.ends_with('"');
+                    let has_single_quote = content.starts_with('\'') && content.ends_with('\'');
 
                     if has_double_quotes || has_single_quote {
                         if let Some(last) = stack.last_mut() {
                             let content_without_quotes = content[1..content.len() - 1].to_string();
                             last.push(Object::String(content_without_quotes));
                         }
-                    } else {
-                        if let Some(last) = stack.last_mut() {
-                            last.push(Object::Symbol(content));
-                        }
+                    } else if let Some(last) = stack.last_mut() {
+                        last.push(Object::Symbol(content));
                     }
                 }
             }
         }
 
         if !parenthesis_counter.is_balanced() {
-            let (ch, line) = parenthesis_counter.last_ch_and_line();
             return Err(ParserError {
                 err: "Unmatched opening parenthesis".to_string(),
-                ch,
-                line,
+                span: parenthesis_counter.last_span(),
             });
         }
 
@@ -83,7 +93,7 @@ impl Object {
         match final_list {
             Some(ref mut list) => {
                 if list.len() == 1 {
-                    return Ok(list[0].clone());
+                    Ok(list[0].clone())
                 } else {
                     Ok(Object::Void)
                 }
@@ -111,8 +121,7 @@ impl ParenthesisCounter {
                 if self.parens.is_empty() {
                     return Err(ParserError {
                         err: "Unmatched closing parenthesis".to_string(),
-                        ch: c.ch,
-                        line: c.line,
+                        span: c.span.clone(),
                     });
                 }
                 self.parens.pop();
@@ -122,11 +131,10 @@ impl ParenthesisCounter {
         Ok(())
     }
 
-    pub fn last_ch_and_line(&self) -> (usize, usize) {
+    pub fn last_span(&self) -> Span {
         match self.parens.last() {
-            Some(Token::LParen(c)) => (c.ch, c.line),
-            Some(_) => (0, 0), // Unreachable code
-            None => (0, 0),
+            Some(Token::LParen(c)) => c.span.clone(),
+            _ => Span { lo: 0, hi: 0 },
         }
     }
 
@@ -138,17 +146,16 @@ impl ParenthesisCounter {
 #[derive(Debug)]
 pub struct ParserError {
     err: String,
-    ch: usize,
-    line: usize,
+    span: Span,
 }
 
 impl std::fmt::Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{line}:{ch} {err}",
-            line = self.line,
-            ch = self.ch,
+            "@{lo}..{hi} {err}",
+            lo = self.span.lo,
+            hi = self.span.hi,
             err = self.err
         )
     }
