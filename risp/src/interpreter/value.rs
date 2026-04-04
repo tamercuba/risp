@@ -5,7 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::env::Env;
 
-type BuiltinFn = Rc<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>;
+type BuiltinFn = fn(&[(Value, Span)], Span) -> Result<Value, RuntimeError>;
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -40,7 +40,7 @@ pub enum Callable {
     },
     Builtin {
         name: &'static str,
-        func: fn(&[Value]) -> Result<Value, RuntimeError>,
+        func: BuiltinFn,
     },
 }
 
@@ -106,7 +106,9 @@ impl std::fmt::Display for Value {
             Value::List(v) => {
                 write!(f, "(")?;
                 for (i, e) in v.iter().enumerate() {
-                    if i > 0 { write!(f, " ")?; }
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
                     write!(f, "{e}")?;
                 }
                 write!(f, ")")
@@ -114,7 +116,9 @@ impl std::fmt::Display for Value {
             Value::Vector(v) => {
                 write!(f, "[")?;
                 for (i, e) in v.iter().enumerate() {
-                    if i > 0 { write!(f, " ")?; }
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
                     write!(f, "{e}")?;
                 }
                 write!(f, "]")
@@ -122,7 +126,9 @@ impl std::fmt::Display for Value {
             Value::Map(m) => {
                 write!(f, "{{")?;
                 for (i, (k, v)) in m.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{k} {v}")?;
                 }
                 write!(f, "}}")
@@ -146,5 +152,9 @@ impl Value {
             Value::Map(_) => "map",
             Value::Callable(_) => "callable",
         }
+    }
+
+    pub fn new_builtin(name: &'static str, func: BuiltinFn) -> Value {
+        Value::Callable(Rc::new(Callable::Builtin { name, func }))
     }
 }

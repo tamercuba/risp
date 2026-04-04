@@ -4,6 +4,8 @@ use crate::lexer::{Lexer, Span};
 use crate::parser::Parser;
 use crate::sema::node::{analyze, AstNode, Node};
 
+use super::builtins::math::math_builtins;
+use super::builtins::stdio::stdio_builtins;
 use super::env::Env;
 use super::value::{Callable, RuntimeError, Value};
 use std::cell::RefCell;
@@ -15,8 +17,17 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(load_builtins: bool) -> Self {
-        // TODO: use load_builtins
-        let env = Env::default();
+        let mut env = Env::default();
+
+        if load_builtins {
+            for (symbol, func) in math_builtins() {
+                env.set_global(symbol, func);
+            }
+            for (symbol, func) in stdio_builtins() {
+                env.set_global(symbol, func);
+            }
+        }
+
         Self {
             env: Rc::new(RefCell::new(env)),
         }
@@ -24,10 +35,8 @@ impl Interpreter {
 
     pub fn run(&mut self, source: &str) -> Result<Value, RuntimeError> {
         let tokens = Lexer::tokenize(source);
-        let cst = Parser::parse(tokens)
-            .map_err(|e| RuntimeError::ParseError(format!("{e:?}")))?;
-        let nodes = analyze(cst)
-            .map_err(|e| RuntimeError::AnalyzeError(format!("{e:?}")))?;
+        let cst = Parser::parse(tokens).map_err(|e| RuntimeError::ParseError(format!("{e:?}")))?;
+        let nodes = analyze(cst).map_err(|e| RuntimeError::AnalyzeError(format!("{e:?}")))?;
         nodes
             .iter()
             .map(|node| self.eval(node))
@@ -177,10 +186,12 @@ impl Interpreter {
                             result
                         }
                         Callable::Builtin { name: _, func } => {
-                            let evaluated_args: Result<Vec<Value>, _> =
-                                args.iter().map(|a| self.eval(a)).collect();
+                            let evaluated_args: Result<Vec<(Value, Span)>, _> = args
+                                .iter()
+                                .map(|a| Ok((self.eval(a)?, a.span.clone())))
+                                .collect();
                             let evaluated_args = evaluated_args?;
-                            func(&evaluated_args)
+                            func(&evaluated_args, node.span.clone())
                         }
                     },
                     _ => Err(RuntimeError::NotCallable {
