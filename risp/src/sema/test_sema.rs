@@ -57,12 +57,117 @@ mod tests {
     }
 
     #[test]
-    fn analyzes_symbol_as_var() {
+    fn unknown_symbol_becomes_global_var() {
         let result = parse("foo");
-        assert!(matches!(result[0].node, Node::Var(_)));
+        assert!(matches!(&result[0].node, Node::GlobalVar(s) if s == "foo"));
     }
 
-    // --- Compound ---
+    #[test]
+    fn let_body_resolves_binding_as_var() {
+        let result = parse("(let [a 1] a)");
+        let body = match &result[0].node {
+            Node::Let { body, .. } => body,
+            _ => panic!("expected Let"),
+        };
+        assert!(matches!(body.node, Node::Var(_)));
+    }
+
+    #[test]
+    fn let_body_unknown_symbol_becomes_global_var() {
+        let result = parse("(let [a 1] foo)");
+        let body = match &result[0].node {
+            Node::Let { body, .. } => body,
+            _ => panic!("expected Let"),
+        };
+        assert!(matches!(&body.node, Node::GlobalVar(s) if s == "foo"));
+    }
+
+    #[test]
+    fn let_sequential_bindings() {
+        // b's value references a — a must be resolved as Var, not GlobalVar
+        let result = parse("(let [a 1 b a] b)");
+        let bindings = match &result[0].node {
+            Node::Let { bindings, .. } => bindings,
+            _ => panic!("expected Let"),
+        };
+        assert!(matches!(bindings[1].1.node, Node::Var(_)));
+    }
+
+    #[test]
+    fn fn_params_resolved_as_var_in_body() {
+        let result = parse("(fn [x] x)");
+        let body = match &result[0].node {
+            Node::Fn { body, .. } => body,
+            _ => panic!("expected Fn"),
+        };
+        assert!(matches!(body.node, Node::Var(_)));
+    }
+
+    #[test]
+    fn fn_body_unknown_symbol_becomes_global_var() {
+        let result = parse("(fn [x] foo)");
+        let body = match &result[0].node {
+            Node::Fn { body, .. } => body,
+            _ => panic!("expected Fn"),
+        };
+        assert!(matches!(&body.node, Node::GlobalVar(s) if s == "foo"));
+    }
+
+    #[test]
+    fn defn_body_resolves_params_as_var() {
+        let result = parse("(defn f [x] x)");
+        let fn_body = match &result[0].node {
+            Node::Def { value, .. } => match &value.node {
+                Node::Fn { body, .. } => body,
+                _ => panic!("expected Fn inside Def"),
+            },
+            _ => panic!("expected Def"),
+        };
+        assert!(matches!(fn_body.node, Node::Var(_)));
+    }
+
+    #[test]
+    fn def_name_is_string() {
+        let result = parse("(def x 42)");
+        assert!(matches!(&result[0].node, Node::Def { name, .. } if name == "x"));
+    }
+
+    #[test]
+    fn defn_name_is_string() {
+        let result = parse("(defn foo [a] a)");
+        assert!(matches!(&result[0].node, Node::Def { name, .. } if name == "foo"));
+    }
+
+    #[test]
+    fn let_binding_ids_are_unique() {
+        let result = parse("(let [a 1 b 2] a)");
+        let bindings = match &result[0].node {
+            Node::Let { bindings, .. } => bindings,
+            _ => panic!("expected Let"),
+        };
+        assert_ne!(bindings[0].0, bindings[1].0);
+    }
+
+    #[test]
+    fn shadowed_var_resolves_to_inner_id() {
+        let result = parse("(let [a 1] (let [a 2] a))");
+        let outer_id = match &result[0].node {
+            Node::Let { bindings, .. } => bindings[0].0,
+            _ => panic!("expected outer Let"),
+        };
+        let inner_body = match &result[0].node {
+            Node::Let { body, .. } => match &body.node {
+                Node::Let { body, .. } => body,
+                _ => panic!("expected inner Let"),
+            },
+            _ => panic!("expected outer Let"),
+        };
+        let inner_id = match inner_body.node {
+            Node::Var(id) => id,
+            _ => panic!("expected Var"),
+        };
+        assert_ne!(outer_id, inner_id);
+    }
 
     #[test]
     fn analyzes_vector() {
@@ -75,8 +180,6 @@ mod tests {
         let result = parse("{:a 1}");
         assert!(matches!(&result[0].node, Node::Map(pairs) if pairs.len() == 1));
     }
-
-    // --- if ---
 
     #[test]
     fn analyzes_if_with_else() {
@@ -101,8 +204,6 @@ mod tests {
         let err = parse_err("(if true 1 2 3)");
         assert!(matches!(err, AnalyzeError::InvalidArity { form: "if", .. }));
     }
-
-    // --- let ---
 
     #[test]
     fn analyzes_let() {
@@ -252,6 +353,16 @@ mod tests {
             &result[0].node,
             Node::Call { args, .. } if args.is_empty()
         ));
+    }
+
+    #[test]
+    fn call_callee_is_global_var() {
+        let result = parse("(foo 1 2)");
+        let callee = match &result[0].node {
+            Node::Call { callee, .. } => callee,
+            _ => panic!("expected Call"),
+        };
+        assert!(matches!(&callee.node, Node::GlobalVar(s) if s == "foo"));
     }
 
     #[test]

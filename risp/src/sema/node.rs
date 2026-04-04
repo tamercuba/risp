@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use crate::lexer::Span;
 use crate::parser::{Expr, ExprKind};
+use crate::sema::ast_scope::Scope;
 
 #[derive(Debug)]
 pub enum AnalyzeError {
@@ -35,9 +36,10 @@ pub enum Node {
     Keyword(String),
 
     Var(u32),
+    GlobalVar(String),
 
     Def {
-        name: u32,
+        name: String,
         value: Box<AstNode>,
     },
     Let {
@@ -64,10 +66,13 @@ pub enum Node {
 }
 
 pub fn analyze(cst: Vec<Expr>) -> Result<Vec<AstNode>, AnalyzeError> {
-    cst.into_iter().map(analyze_expr).collect()
+    let scope = Scope::new();
+    cst.into_iter()
+        .map(|expr| analyze_expr(expr, &scope))
+        .collect()
 }
 
-fn analyze_expr(expr: Expr) -> Result<AstNode, AnalyzeError> {
+fn analyze_expr(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     let span = expr.span.clone();
     match expr.kind {
         ExprKind::Long(n) => Ok(AstNode::new(Node::Long(n), span)),
@@ -76,19 +81,22 @@ fn analyze_expr(expr: Expr) -> Result<AstNode, AnalyzeError> {
         ExprKind::Nil => Ok(AstNode::new(Node::Nil, span)),
         ExprKind::String(s) => Ok(AstNode::new(Node::String(s), span)),
         ExprKind::Keyword(s) => Ok(AstNode::new(Node::Keyword(s), span)),
-        ExprKind::Symbol(_) => Ok(AstNode::new(Node::Var(0), span)), // TODO: name resolution
-        ExprKind::List(elems) => analyze_list(elems, span),
+        ExprKind::Symbol(s) => match scope.get_by_name(&s) {
+            Some(id) => Ok(AstNode::new(Node::Var(id), span)),
+            None => Ok(AstNode::new(Node::GlobalVar(s), span)),
+        },
+        ExprKind::List(elems) => analyze_list(elems, span, &scope),
         ExprKind::Vector(elems) => {
             let nodes = elems
                 .into_iter()
-                .map(analyze_expr)
+                .map(|expr| analyze_expr(expr, &scope))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(AstNode::new(Node::Vector(nodes), span))
         }
         ExprKind::Map(pairs) => {
             let nodes = pairs
                 .into_iter()
-                .map(|(k, v)| Ok((analyze_expr(k)?, analyze_expr(v)?)))
+                .map(|(k, v)| Ok((analyze_expr(k, &scope)?, analyze_expr(v, &scope)?)))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(AstNode::new(Node::Map(nodes), span))
         }
@@ -99,18 +107,18 @@ fn is_symbol(expr: &Expr, name: &str) -> bool {
     matches!(&expr.kind, ExprKind::Symbol(s) if s == name)
 }
 
-fn analyze_list(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_list(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     match elems.first() {
-        Some(head) if is_symbol(head, "if") => analyze_if(elems, span),
-        Some(head) if is_symbol(head, "let") => analyze_let(elems, span),
-        Some(head) if is_symbol(head, "fn") => analyze_fn(elems, span),
-        Some(head) if is_symbol(head, "defn") => analyze_defn(elems, span),
-        Some(head) if is_symbol(head, "def") => analyze_def(elems, span),
-        _ => analyze_call(elems, span),
+        Some(head) if is_symbol(head, "if") => analyze_if(elems, span, &scope),
+        Some(head) if is_symbol(head, "let") => analyze_let(elems, span, &scope),
+        Some(head) if is_symbol(head, "fn") => analyze_fn(elems, span, &scope),
+        Some(head) if is_symbol(head, "defn") => analyze_defn(elems, span, &scope),
+        Some(head) if is_symbol(head, "def") => analyze_def(elems, span, &scope),
+        _ => analyze_call(elems, span, &scope),
     }
 }
 
-fn analyze_def(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_def(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     // (def x bla)
     if elems.len() != 3 {
         return Err(AnalyzeError::InvalidArity { form: "def", span });
@@ -118,27 +126,27 @@ fn analyze_def(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
 
     let symbol_expr = elems[1].clone();
     let name = match (symbol_expr.kind, symbol_expr.span) {
-        (ExprKind::Symbol(_), _) => Ok(0),
+        (ExprKind::Symbol(name), _) => Ok(name),
         (_, s) => Err(AnalyzeError::InvalidBindingKey(s)),
     }?;
 
-    let value = Box::new(analyze_expr(elems[2].clone())?);
+    let value = Box::new(analyze_expr(elems[2].clone(), scope)?);
 
     Ok(AstNode::new(Node::Def { name, value }, span))
 }
 
-fn analyze_if(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_if(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     if elems.len() < 3 || elems.len() > 4 {
         return Err(AnalyzeError::InvalidArity { form: "if", span });
     }
 
     // 0 is the if symbol
-    let cond = analyze_expr(elems[1].clone())?;
-    let then = analyze_expr(elems[2].clone())?;
+    let cond = analyze_expr(elems[1].clone(), scope)?;
+    let then = analyze_expr(elems[2].clone(), scope)?;
     let _else = elems
         .into_iter()
         .nth(3)
-        .map(|e| analyze_expr(e).map(Box::new))
+        .map(|e| analyze_expr(e, scope).map(Box::new))
         .transpose()?;
 
     Ok(AstNode::new(
@@ -151,7 +159,7 @@ fn analyze_if(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
     ))
 }
 
-fn analyze_let(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_let(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     // (let [a 1] body)
     if elems.len() != 3 {
         return Err(AnalyzeError::InvalidArity { form: "let", span });
@@ -161,6 +169,7 @@ fn analyze_let(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
     let bindings_expr = elems[1].clone();
     let bindings_span = bindings_expr.span.clone();
 
+    let mut child_scope = scope.enter_scope();
     let bindings_array: Vec<Expr> = match bindings_expr.kind {
         ExprKind::Vector(l) => Ok(l),
         _ => Err(AnalyzeError::InvalidBindings(bindings_span.clone())),
@@ -175,24 +184,25 @@ fn analyze_let(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
 
     while let (Some(k), Some(v)) = (iter.next(), iter.next()) {
         let key = match k.kind {
-            ExprKind::Symbol(_) => Ok(0u32), // TODO: name resolution
+            ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
             _ => Err(AnalyzeError::InvalidBindingKey(k.span)),
         }?;
-        let val = analyze_expr(v)?;
+        let val = analyze_expr(v, &child_scope)?;
         bindings.push((key, val));
     }
 
-    let body = Box::new(analyze_expr(elems[2].clone())?);
+    let body = Box::new(analyze_expr(elems[2].clone(), &child_scope)?);
 
     Ok(AstNode::new(Node::Let { bindings, body }, span))
 }
 
-fn analyze_fn(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_fn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     // (fn [a b] (...))
     if elems.len() != 3 {
         return Err(AnalyzeError::InvalidArity { form: "fn", span });
     }
 
+    let mut child_scope = scope.enter_scope();
     let params_expr = elems[1].clone();
     let params_values: Vec<Expr> = match (params_expr.kind, params_expr.span) {
         (ExprKind::Vector(v), _) => Ok(v),
@@ -201,17 +211,17 @@ fn analyze_fn(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
     let params: Vec<u32> = params_values
         .into_iter()
         .map(|e| match e.kind {
-            ExprKind::Symbol(_) => Ok(0u32), // TODO: name resolution
+            ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
             _ => Err(AnalyzeError::InvalidFnParams(e.span)),
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let body = Box::new(analyze_expr(elems[2].clone())?);
+    let body = Box::new(analyze_expr(elems[2].clone(), &child_scope)?);
 
     Ok(AstNode::new(Node::Fn { params, body }, span))
 }
 
-fn analyze_defn(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_defn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     // (defn bla [a b] (...))
 
     if elems.len() != 4 {
@@ -220,7 +230,7 @@ fn analyze_defn(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
 
     let symbol_expr = elems[1].clone();
     let name = match (symbol_expr.kind, symbol_expr.span) {
-        (ExprKind::Symbol(_), _) => Ok(0),
+        (ExprKind::Symbol(name), _) => Ok(name),
         (_, s) => Err(AnalyzeError::InvalidBindingKey(s)),
     }?;
 
@@ -229,31 +239,30 @@ fn analyze_defn(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
         (ExprKind::Vector(v), _) => Ok(v),
         (_, params_span) => Err(AnalyzeError::InvalidFnParams(params_span)),
     }?;
+    let mut child_scope = scope.enter_scope();
     let params: Vec<u32> = params_values
         .into_iter()
         .map(|e| match e.kind {
-            ExprKind::Symbol(_) => Ok(0u32), // TODO: name resolution
+            ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
             _ => Err(AnalyzeError::InvalidFnParams(e.span)),
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let body = Box::new(analyze_expr(elems[3].clone())?);
-
+    let body = Box::new(analyze_expr(elems[3].clone(), &child_scope)?);
     let value = Box::new(AstNode::new(Node::Fn { params, body }, span.clone()));
-    let _def = AstNode::new(Node::Def { name, value }, span);
 
-    Ok(_def)
+    Ok(AstNode::new(Node::Def { name, value }, span))
 }
 
-fn analyze_call(elems: Vec<Expr>, span: Span) -> Result<AstNode, AnalyzeError> {
+fn analyze_call(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
     if elems.is_empty() {
         return Err(AnalyzeError::InvalidExpression(span));
     }
 
-    let callee = Box::new(analyze_expr(elems[0].clone())?);
+    let callee = Box::new(analyze_expr(elems[0].clone(), scope)?);
     let args = elems[1..]
         .iter()
-        .map(|e| analyze_expr(e.clone()))
+        .map(|e| analyze_expr(e.clone(), scope))
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(AstNode::new(Node::Call { callee, args }, span))
