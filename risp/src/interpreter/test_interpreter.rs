@@ -11,8 +11,6 @@ mod tests {
         Interpreter::new(false).run(source).unwrap_err()
     }
 
-    // --- atoms ---
-
     #[test]
     fn eval_long() {
         assert!(matches!(run("42"), Value::Long(42)));
@@ -53,8 +51,6 @@ mod tests {
         assert!(matches!(run(":foo"), Value::Keyword(s) if s == "foo"));
     }
 
-    // --- if ---
-
     #[test]
     fn eval_if_true_branch() {
         assert!(matches!(run("(if true 1 2)"), Value::Long(1)));
@@ -79,11 +75,12 @@ mod tests {
     fn eval_if_type_error() {
         assert!(matches!(
             run_err("(if 42 1 2)"),
-            crate::interpreter::value::RuntimeError::TypeError { expected: "bool", .. }
+            crate::interpreter::value::RuntimeError::TypeError {
+                expected: "bool",
+                ..
+            }
         ));
     }
-
-    // --- let ---
 
     #[test]
     fn eval_let_basic() {
@@ -97,20 +94,16 @@ mod tests {
 
     #[test]
     fn eval_let_sequential_binding() {
-        // y depends on x bound earlier in the same let
         assert!(matches!(run("(let [x 3 y x] y)"), Value::Long(3)));
     }
 
     #[test]
     fn eval_let_scope_does_not_leak() {
-        // x should not be visible outside the let
         assert!(matches!(
             run_err("(let [x 1] nil) x"),
             crate::interpreter::value::RuntimeError::UndefinedVariable { .. }
         ));
     }
-
-    // --- fn & call ---
 
     #[test]
     fn eval_fn_returns_callable() {
@@ -126,17 +119,18 @@ mod tests {
     fn eval_call_wrong_arity() {
         assert!(matches!(
             run_err("((fn [x] x) 1 2)"),
-            crate::interpreter::value::RuntimeError::WrongArity { expected: 1, got: 2, .. }
+            crate::interpreter::value::RuntimeError::WrongArity {
+                expected: 1,
+                got: 2,
+                ..
+            }
         ));
     }
 
     #[test]
     fn eval_closure_captures_env() {
-        // (let [x 10] ((fn [] x)))  — fn closes over x
         assert!(matches!(run("(let [x 10] ((fn [] x)))"), Value::Long(10)));
     }
-
-    // --- def ---
 
     #[test]
     fn eval_def_returns_nil() {
@@ -150,10 +144,11 @@ mod tests {
 
     #[test]
     fn eval_defn_then_call() {
-        assert!(matches!(run("(defn double [x] x) (double 7)"), Value::Long(7)));
+        assert!(matches!(
+            run("(defn double [x] x) (double 7)"),
+            Value::Long(7)
+        ));
     }
-
-    // --- vector ---
 
     #[test]
     fn eval_vector_literal() {
@@ -165,8 +160,6 @@ mod tests {
         assert!(matches!(run("[]"), Value::Vector(v) if v.is_empty()));
     }
 
-    // --- map ---
-
     #[test]
     fn eval_map_literal() {
         assert!(matches!(run("{:a 1}"), Value::Map(m) if m.len() == 1));
@@ -176,8 +169,6 @@ mod tests {
     fn eval_empty_map() {
         assert!(matches!(run("{}"), Value::Map(m) if m.is_empty()));
     }
-
-    // --- multiple top-level forms ---
 
     #[test]
     fn eval_returns_last_form() {
