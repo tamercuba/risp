@@ -14,7 +14,7 @@ pub enum AnalyzeError {
     SymbolIsNotAFunction(Span),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstNode {
     pub node: Node,
     pub span: Span,
@@ -26,7 +26,7 @@ impl AstNode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Node {
     Long(i64),
     Double(f64),
