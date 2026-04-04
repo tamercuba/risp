@@ -24,9 +24,11 @@ impl Interpreter {
 
     pub fn run(&mut self, source: &str) -> Result<Value, RuntimeError> {
         let tokens = Lexer::tokenize(source);
-        let cst = Parser::parse(tokens).unwrap();
-        analyze(cst)
-            .unwrap()
+        let cst = Parser::parse(tokens)
+            .map_err(|e| RuntimeError::ParseError(format!("{e:?}")))?;
+        let nodes = analyze(cst)
+            .map_err(|e| RuntimeError::AnalyzeError(format!("{e:?}")))?;
+        nodes
             .iter()
             .map(|node| self.eval(node))
             .last()

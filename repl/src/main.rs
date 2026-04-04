@@ -1,12 +1,12 @@
-use risp::Evaluator;
+use risp::Interpreter;
 
-use linefeed::{ Interface, ReadResult };
+use linefeed::{Interface, ReadResult};
 
 const PROMPT: &str = "risp> ";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reader = Interface::new(PROMPT).unwrap();
-    let mut evaluator = Evaluator::new(true);
+    let mut interpreter = Interpreter::new(true);
 
     reader.set_prompt(format!("{}", PROMPT).as_ref()).unwrap();
 
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         }
 
-        let val = evaluator.eval(input.as_ref());
+        let val = interpreter.run(input.as_ref());
         match val {
             Ok(v) => println!("{}", v),
             Err(e) => println!("{}", e),
