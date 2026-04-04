@@ -1,7 +1,8 @@
+mod env;
+mod evaluator;
 mod lexer;
 mod parser;
-mod evaluator;
-mod env;
+mod sema;
 
-pub use evaluator::Evaluator;
 pub use env::Env;
+pub use evaluator::Evaluator;

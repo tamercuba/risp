@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::lexer::token::Content;
 use crate::lexer::{Span, Token};
 use crate::parser::cst::{Expr, ExprKind};
