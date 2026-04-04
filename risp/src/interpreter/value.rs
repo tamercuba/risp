@@ -55,7 +55,29 @@ pub enum Value {
     List(Vec<Value>),
     Vector(Vec<Value>),
     Map(Vec<(Value, Value)>),
+    Set(Vec<Value>),
+    Symbol(String),
     Callable(Rc<Callable>),
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Nil, Value::Nil) => true,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Long(a), Value::Long(b)) => a == b,
+            (Value::Double(a), Value::Double(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Keyword(a), Value::Keyword(b)) => a == b,
+            (Value::Symbol(a), Value::Symbol(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Vector(a), Value::Vector(b)) => a == b,
+            (Value::Set(a), Value::Set(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            // Callables are never equal
+            _ => false,
+        }
+    }
 }
 impl std::fmt::Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -69,6 +91,8 @@ impl std::fmt::Debug for Value {
             Value::List(v) => write!(f, "List({v:?})"),
             Value::Vector(v) => write!(f, "Vector({v:?})"),
             Value::Map(m) => write!(f, "Map({m:?})"),
+            Value::Set(v) => write!(f, "Set({v:?})"),
+            Value::Symbol(s) => write!(f, "Symbol({s})"),
             Value::Callable(_) => write!(f, "Callable(...)"),
         }
     }
@@ -133,6 +157,17 @@ impl std::fmt::Display for Value {
                 }
                 write!(f, "}}")
             }
+            Value::Set(v) => {
+                write!(f, "#{{")?;
+                for (i, e) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, " ")?;
+                    }
+                    write!(f, "{e}")?;
+                }
+                write!(f, "}}")
+            }
+            Value::Symbol(s) => write!(f, "{s}"),
             Value::Callable(_) => write!(f, "#<fn>"),
         }
     }
@@ -150,6 +185,8 @@ impl Value {
             Value::List(_) => "list",
             Value::Vector(_) => "vector",
             Value::Map(_) => "map",
+            Value::Set(_) => "set",
+            Value::Symbol(_) => "symbol",
             Value::Callable(_) => "callable",
         }
     }

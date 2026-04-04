@@ -21,6 +21,8 @@ pub enum Frame {
     List(Vec<Expr>, Span),
     Vector(Vec<Expr>, Span),
     Map(Vec<Expr>, Span),
+    Set(Vec<Expr>, Span),
+    Quote(Span),
 }
 
 #[derive(Debug)]
@@ -28,6 +30,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     stack: Vec<Frame>,
     result: Vec<Expr>,
+    pending_hash: bool,
 }
 
 impl Parser {
@@ -36,6 +39,7 @@ impl Parser {
             tokens: tokens.into_iter().rev().collect::<Vec<Token>>(),
             stack: vec![],
             result: vec![],
+            pending_hash: false,
         }
     }
 
@@ -47,12 +51,33 @@ impl Parser {
     fn run(mut self) -> Result<Vec<Expr>, ParseError> {
         while let Some(token) = self.tokens.pop() {
             match token {
-                Token::LParen(c) => self.stack.push(Frame::List(vec![], c.span)),
+                Token::LParen(c) => {
+                    self.pending_hash = false;
+                    self.stack.push(Frame::List(vec![], c.span));
+                }
                 Token::RParen(c) => self.parse_r_paren(c.span)?,
-                Token::LBracket(c) => self.stack.push(Frame::Vector(vec![], c.span)),
+                Token::LBracket(c) => {
+                    self.pending_hash = false;
+                    self.stack.push(Frame::Vector(vec![], c.span));
+                }
                 Token::RBracket(c) => self.parse_r_bracket(c.span)?,
-                Token::LBrace(c) => self.stack.push(Frame::Map(vec![], c.span)),
+                Token::LBrace(c) => {
+                    if self.pending_hash {
+                        self.pending_hash = false;
+                        self.stack.push(Frame::Set(vec![], c.span));
+                    } else {
+                        self.stack.push(Frame::Map(vec![], c.span));
+                    }
+                }
                 Token::RBrace(c) => self.parse_r_brace(c.span)?,
+                Token::Hash(c) => {
+                    self.pending_hash = true;
+                    // consume the span; actual frame pushed when LBrace arrives
+                    let _ = c;
+                }
+                Token::Quote(c) => {
+                    self.stack.push(Frame::Quote(c.span));
+                }
                 Token::Long(c) => self.push_to_frame(ExprKind::Long(c.content), c.span)?,
                 Token::Double(c) => self.push_to_frame(ExprKind::Double(c.content), c.span)?,
                 Token::Symbol(c) => self.parse_symbol(c)?,
@@ -63,7 +88,10 @@ impl Parser {
 
         if let Some(frame) = self.stack.last() {
             let span = match frame {
-                Frame::List(_, s) | Frame::Vector(_, s) | Frame::Map(_, s) => s.clone(),
+                Frame::List(_, s) | Frame::Vector(_, s) | Frame::Map(_, s) | Frame::Set(_, s) => {
+                    s.clone()
+                }
+                Frame::Quote(s) => s.clone(),
             };
             return Err(ParseError::UnmatchedOpen(span));
         }
@@ -86,10 +114,31 @@ impl Parser {
             kind: expr_kind,
             span,
         };
+        self.push_expr(expr)
+    }
+
+    fn push_expr(&mut self, expr: Expr) -> Result<(), ParseError> {
+        // Check if the top frame is a Quote — if so, close it immediately
+        if matches!(self.stack.last(), Some(Frame::Quote(_))) {
+            let frame = self.stack.pop().unwrap();
+            let quote_span = match frame {
+                Frame::Quote(s) => s,
+                _ => unreachable!(),
+            };
+            let full_span = quote_span.full(expr.span.clone());
+            let quoted = Expr {
+                kind: ExprKind::Quote(Box::new(expr)),
+                span: full_span,
+            };
+            return self.push_expr(quoted);
+        }
+
         match self.stack.last_mut() {
             Some(Frame::List(elems, _)) => elems.push(expr),
             Some(Frame::Vector(elems, _)) => elems.push(expr),
             Some(Frame::Map(elems, _)) => elems.push(expr),
+            Some(Frame::Set(elems, _)) => elems.push(expr),
+            Some(Frame::Quote(_)) => unreachable!(),
             None => self.result.push(expr),
         }
         Ok(())
@@ -110,6 +159,12 @@ impl Parser {
                 found: ')',
                 span,
             }),
+            Some(Frame::Set(_, span)) => Err(ParseError::MismatchedDelimiter {
+                expected: '}',
+                found: ')',
+                span,
+            }),
+            Some(Frame::Quote(span)) => Err(ParseError::UnmatchedOpen(span)),
             None => Err(ParseError::UnmatchedClose(')', current_span)),
         }
     }
@@ -129,6 +184,12 @@ impl Parser {
                 found: ']',
                 span,
             }),
+            Some(Frame::Set(_, span)) => Err(ParseError::MismatchedDelimiter {
+                expected: '}',
+                found: ']',
+                span,
+            }),
+            Some(Frame::Quote(span)) => Err(ParseError::UnmatchedOpen(span)),
             None => Err(ParseError::UnmatchedClose(']', current_span)),
         }
     }
@@ -146,6 +207,9 @@ impl Parser {
 
                 self.push_to_frame(ExprKind::Map(map_elemen), span.full(current_span))
             }
+            Some(Frame::Set(elems, span)) => {
+                self.push_to_frame(ExprKind::Set(elems), span.full(current_span))
+            }
             Some(Frame::List(_, span)) => Err(ParseError::MismatchedDelimiter {
                 expected: ')',
                 found: '}',
@@ -156,6 +220,7 @@ impl Parser {
                 found: '}',
                 span,
             }),
+            Some(Frame::Quote(span)) => Err(ParseError::UnmatchedOpen(span)),
             None => Err(ParseError::UnmatchedClose('}', current_span)),
         }
     }

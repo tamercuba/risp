@@ -59,10 +59,13 @@ pub enum Node {
         then: Box<AstNode>,
         _else: Option<Box<AstNode>>,
     },
+    Do(Vec<AstNode>),
 
     List(Vec<AstNode>),
     Vector(Vec<AstNode>),
     Map(Vec<(AstNode, AstNode)>),
+    Set(Vec<AstNode>),
+    Symbol(String),
 }
 
 pub fn analyze(cst: Vec<Expr>) -> Result<Vec<AstNode>, AnalyzeError> {
@@ -100,6 +103,37 @@ fn analyze_expr(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(AstNode::new(Node::Map(nodes), span))
         }
+        ExprKind::Set(elems) => {
+            let nodes = elems
+                .into_iter()
+                .map(|e| analyze_expr(e, &scope))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(AstNode::new(Node::Set(nodes), span))
+        }
+        ExprKind::Quote(inner) => analyze_quoted(*inner, &scope),
+    }
+}
+
+fn analyze_quoted(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    let span = expr.span.clone();
+    match expr.kind {
+        ExprKind::Symbol(s) => Ok(AstNode::new(Node::Symbol(s), span)),
+        ExprKind::List(elems) => {
+            let nodes = elems
+                .into_iter()
+                .map(|e| analyze_quoted(e, scope))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(AstNode::new(Node::List(nodes), span))
+        }
+        ExprKind::Vector(elems) => {
+            let nodes = elems
+                .into_iter()
+                .map(|e| analyze_quoted(e, scope))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(AstNode::new(Node::Vector(nodes), span))
+        }
+        // Literals pass through normally
+        _ => analyze_expr(expr, scope),
     }
 }
 
@@ -114,8 +148,18 @@ fn analyze_list(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, 
         Some(head) if is_symbol(head, "fn") => analyze_fn(elems, span, &scope),
         Some(head) if is_symbol(head, "defn") => analyze_defn(elems, span, &scope),
         Some(head) if is_symbol(head, "def") => analyze_def(elems, span, &scope),
+        Some(head) if is_symbol(head, "do") => analyze_do(elems, span, &scope),
         _ => analyze_call(elems, span, &scope),
     }
+}
+
+fn analyze_do(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    // (do () () ()) return last Expr
+    let body: Vec<AstNode> = elems[1..]
+        .iter()
+        .map(|e| analyze_expr(e.clone(), scope))
+        .collect::<Result<_, _>>()?;
+    Ok(AstNode::new(Node::Do(body), span))
 }
 
 fn analyze_def(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {

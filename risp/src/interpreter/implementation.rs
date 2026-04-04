@@ -4,8 +4,7 @@ use crate::lexer::{Lexer, Span};
 use crate::parser::Parser;
 use crate::sema::node::{analyze, AstNode, Node};
 
-use super::builtins::math::math_builtins;
-use super::builtins::stdio::stdio_builtins;
+use super::builtins::builtins;
 use super::env::Env;
 use super::value::{Callable, RuntimeError, Value};
 use std::cell::RefCell;
@@ -17,20 +16,20 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(load_builtins: bool) -> Self {
-        let mut env = Env::default();
+        let env = Rc::new(RefCell::new(Env::default()));
 
         if load_builtins {
-            for (symbol, func) in math_builtins() {
-                env.set_global(symbol, func);
-            }
-            for (symbol, func) in stdio_builtins() {
-                env.set_global(symbol, func);
-            }
+            Self::load_builtins(env.clone());
         }
 
-        Self {
-            env: Rc::new(RefCell::new(env)),
+        Self { env }
+    }
+
+    fn load_builtins(env: Rc<RefCell<Env>>) -> Option<()> {
+        for (name, value) in builtins() {
+            env.borrow_mut().set_global(name, value);
         }
+        None
     }
 
     pub fn run(&mut self, source: &str) -> Result<Value, RuntimeError> {
@@ -59,9 +58,12 @@ impl Interpreter {
             Node::Fn { .. } => self.eval_fn(node),
             Node::Def { .. } => self.eval_def(node),
             Node::Call { .. } => self.eval_call(node),
+            Node::Do(elems) => self.eval_do(elems),
             Node::List(elems) => self.eval_list_literal(elems),
             Node::Vector(elems) => self.eval_vector_literal(elems),
             Node::Map(pairs) => self.eval_map_literal(pairs),
+            Node::Set(elems) => self.eval_set_literal(elems),
+            Node::Symbol(s) => Ok(Value::Symbol(s.clone())),
         }
     }
 
@@ -253,5 +255,24 @@ impl Interpreter {
         }
 
         Ok(Value::Map(map_values))
+    }
+
+    fn eval_set_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
+        let mut values: Vec<Value> = vec![];
+        for elem in elems {
+            let v = self.eval(elem)?;
+            if !values.contains(&v) {
+                values.push(v);
+            }
+        }
+        Ok(Value::Set(values))
+    }
+
+    fn eval_do(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
+        elems
+            .iter()
+            .map(|e| self.eval(e))
+            .last()
+            .unwrap_or(Ok(Value::Nil))
     }
 }

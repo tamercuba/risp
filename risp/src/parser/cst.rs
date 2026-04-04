@@ -15,6 +15,8 @@ pub enum ExprKind {
     List(Vec<Expr>),
     Vector(Vec<Expr>),
     Map(Vec<(Expr, Expr)>),
+    Set(Vec<Expr>),
+    Quote(Box<Expr>),
 }
 
 #[derive(Debug, Clone)]

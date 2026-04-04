@@ -46,6 +46,12 @@ impl Lexer {
                 ']' => {
                     lexer.push_delimiter(Token::RBracket, ch_offset);
                 }
+                '#' => {
+                    lexer.push_delimiter(Token::Hash, ch_offset);
+                }
+                '\'' => {
+                    lexer.push_delimiter(Token::Quote, ch_offset);
+                }
                 ' ' | '\t' | '\n' | '\r' => {
                     lexer.flush_buffer(ch_offset);
                 }

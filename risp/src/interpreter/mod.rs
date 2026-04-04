@@ -6,6 +6,5 @@ pub mod implementation;
 mod test_interpreter;
 mod value;
 
-pub use builtins::math;
 pub use env::Env;
 pub use implementation::Interpreter;

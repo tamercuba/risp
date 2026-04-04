@@ -1,0 +1,30 @@
+use crate::interpreter::value::{RuntimeError, Value};
+use crate::lexer::Span;
+
+fn list(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
+    Ok(Value::List(
+        args.iter().map(|t| t.0.clone()).collect::<Vec<Value>>(),
+    ))
+}
+
+fn vec(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
+    Ok(Value::Vector(
+        args.iter().map(|t| t.0.clone()).collect::<Vec<Value>>(),
+    ))
+}
+
+fn map(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
+    Ok(Value::Map(
+        args.chunks(2)
+            .map(|pair| (pair[0].0.clone(), pair[1].0.clone()))
+            .collect::<Vec<(Value, Value)>>(),
+    ))
+}
+
+pub fn ds_builtins() -> Vec<(&'static str, Value)> {
+    vec![
+        ("list", Value::new_builtin("list", list)),
+        ("vector", Value::new_builtin("vector", vec)),
+        ("hash-map", Value::new_builtin("hash-map", map)),
+    ]
+}

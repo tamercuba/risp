@@ -78,6 +78,8 @@ pub enum Token {
     RBracket(Content<()>),
     LBrace(Content<()>),
     RBrace(Content<()>),
+    Hash(Content<()>),
+    Quote(Content<()>),
 }
 
 impl Display for Token {
@@ -125,6 +127,8 @@ impl Display for Token {
             Token::RBracket(c) => write!(f, "{lo}..{hi} RBracket", lo = c.span.lo, hi = c.span.hi),
             Token::LBrace(c) => write!(f, "{lo}..{hi} LBrace", lo = c.span.lo, hi = c.span.hi),
             Token::RBrace(c) => write!(f, "{lo}..{hi} RBrace", lo = c.span.lo, hi = c.span.hi),
+            Token::Hash(c) => write!(f, "{lo}..{hi} Hash", lo = c.span.lo, hi = c.span.hi),
+            Token::Quote(c) => write!(f, "{lo}..{hi} Quote", lo = c.span.lo, hi = c.span.hi),
         }
     }
 }
@@ -173,6 +177,8 @@ impl Debug for Token {
             Token::RBracket(c) => write!(f, "{lo}..{hi} RBracket", lo = c.span.lo, hi = c.span.hi),
             Token::LBrace(c) => write!(f, "{lo}..{hi} LBrace", lo = c.span.lo, hi = c.span.hi),
             Token::RBrace(c) => write!(f, "{lo}..{hi} RBrace", lo = c.span.lo, hi = c.span.hi),
+            Token::Hash(c) => write!(f, "{lo}..{hi} Hash", lo = c.span.lo, hi = c.span.hi),
+            Token::Quote(c) => write!(f, "{lo}..{hi} Quote", lo = c.span.lo, hi = c.span.hi),
         }
     }
 }
