@@ -194,6 +194,28 @@ impl Interpreter {
                             func(&evaluated_args, node.span.clone())
                         }
                     },
+                    Value::Keyword(v) => {
+                        if args.len() != 1 {
+                            return Err(RuntimeError::WrongArity {
+                                expected: 1,
+                                got: args.len(),
+                                span: node.span.clone(),
+                            });
+                        }
+                        let arg = self.eval(&args[0])?;
+                        match arg {
+                            Value::Map(pairs) => Ok(pairs
+                                .into_iter()
+                                .find(|(key, _)| matches!(key, Value::Keyword(s) if *s == v))
+                                .map(|(_, v)| v)
+                                .unwrap_or(Value::Nil)),
+                            _ => Err(RuntimeError::TypeError {
+                                expected: "map",
+                                got: arg.type_name(),
+                                span: args[0].span.clone(),
+                            }),
+                        }
+                    }
                     _ => Err(RuntimeError::NotCallable {
                         span: node.span.clone(),
                     }),
