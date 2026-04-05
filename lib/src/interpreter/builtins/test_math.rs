@@ -11,10 +11,6 @@ mod tests {
         Interpreter::new(true).run(source).unwrap_err()
     }
 
-    fn long(n: i64) -> Value {
-        Value::Long(n)
-    }
-
     fn approx(a: f64, b: f64) -> bool {
         (a - b).abs() < 1e-10
     }

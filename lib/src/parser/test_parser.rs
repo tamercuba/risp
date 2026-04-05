@@ -7,6 +7,10 @@ mod tests {
         Span { lo: 0, hi: 0 }
     }
 
+    fn expr(kind: ExprKind) -> Expr {
+        Expr { kind, span: span() }
+    }
+
     fn parse(input: &str) -> Vec<Expr> {
         Parser::parse(Lexer::tokenize(input)).unwrap()
     }
@@ -81,9 +85,9 @@ mod tests {
         assert_eq!(
             result[0].kind,
             ExprKind::List(vec![
-                Expr::new(ExprKind::Symbol("+".to_string()), span()),
-                Expr::new(ExprKind::Long(1), span()),
-                Expr::new(ExprKind::Long(2), span()),
+                expr(ExprKind::Symbol("+".to_string())),
+                expr(ExprKind::Long(1)),
+                expr(ExprKind::Long(2)),
             ])
         );
     }
@@ -100,9 +104,9 @@ mod tests {
         assert_eq!(
             result[0].kind,
             ExprKind::Vector(vec![
-                Expr::new(ExprKind::Long(1), span()),
-                Expr::new(ExprKind::Long(2), span()),
-                Expr::new(ExprKind::Long(3), span()),
+                expr(ExprKind::Long(1)),
+                expr(ExprKind::Long(2)),
+                expr(ExprKind::Long(3)),
             ])
         );
     }
@@ -119,8 +123,8 @@ mod tests {
         assert_eq!(
             result[0].kind,
             ExprKind::Map(vec![(
-                Expr::new(ExprKind::Keyword("a".to_string()), span()),
-                Expr::new(ExprKind::Long(1), span()),
+                expr(ExprKind::Keyword("a".to_string())),
+                expr(ExprKind::Long(1)),
             )])
         );
     }
@@ -131,15 +135,12 @@ mod tests {
         assert_eq!(
             result[0].kind,
             ExprKind::List(vec![
-                Expr::new(ExprKind::Symbol("+".to_string()), span()),
-                Expr::new(
-                    ExprKind::Vector(vec![
-                        Expr::new(ExprKind::Long(1), span()),
-                        Expr::new(ExprKind::Long(2), span()),
-                    ]),
-                    span()
-                ),
-                Expr::new(ExprKind::Long(3), span()),
+                expr(ExprKind::Symbol("+".to_string())),
+                expr(ExprKind::Vector(vec![
+                    expr(ExprKind::Long(1)),
+                    expr(ExprKind::Long(2)),
+                ])),
+                expr(ExprKind::Long(3)),
             ])
         );
     }
