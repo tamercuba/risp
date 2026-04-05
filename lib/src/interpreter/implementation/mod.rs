@@ -31,6 +31,18 @@ impl Interpreter {
         None
     }
 
+    pub fn completions(&self) -> Vec<String> {
+        let builtins = self.env.borrow().global_names();
+        let special_forms = [
+            "if", "let", "fn", "def", "defn", "do", "apply", "map", "filter", "reduce",
+        ];
+        special_forms
+            .iter()
+            .map(|s| s.to_string())
+            .chain(builtins)
+            .collect()
+    }
+
     pub fn run(&mut self, source: &str) -> Result<Value, RuntimeError> {
         let tokens = Lexer::tokenize(source);
         let cst = Parser::parse(tokens).map_err(|e| RuntimeError::ParseError(format!("{e}")))?;

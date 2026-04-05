@@ -36,6 +36,10 @@ impl Env {
             .or_else(|| self.parent.as_ref()?.borrow().get_global(name))
     }
 
+    pub fn global_names(&self) -> Vec<String> {
+        self.globals.keys().cloned().collect()
+    }
+
     pub fn set_global(&mut self, name: &str, value: Value) {
         match self.parent.as_ref() {
             Some(parent) => parent.borrow_mut().set_global(name, value),

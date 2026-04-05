@@ -1,3 +1,6 @@
 /target
 CLAUDE.md
 .claude/
+.risp_history
+.clj-kondo/
+.lsp/
