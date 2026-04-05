@@ -1,4 +1,4 @@
-use crate::interpreter::value::{RuntimeError, Value};
+use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
 fn sum(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
@@ -167,7 +167,7 @@ fn divide(args: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     }
 }
 
-pub fn math_builtins() -> Vec<(&'static str, Value)> {
+pub fn builtins() -> Vec<(&'static str, Value)> {
     vec![
         ("+", Value::new_builtin("+", sum)),
         ("-", Value::new_builtin("-", minus)),

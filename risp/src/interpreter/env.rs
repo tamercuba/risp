@@ -1,6 +1,4 @@
-#![allow(dead_code)]
-
-use super::value::Value;
+use super::Value;
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 

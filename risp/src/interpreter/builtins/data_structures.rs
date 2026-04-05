@@ -1,4 +1,4 @@
-use crate::interpreter::value::{RuntimeError, Value};
+use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
 fn list(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
@@ -21,7 +21,7 @@ fn map(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
     ))
 }
 
-pub fn ds_builtins() -> Vec<(&'static str, Value)> {
+pub fn builtins() -> Vec<(&'static str, Value)> {
     vec![
         ("list", Value::new_builtin("list", list)),
         ("vector", Value::new_builtin("vector", vec)),

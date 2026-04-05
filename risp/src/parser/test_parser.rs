@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::lexer::{Lexer, Span};
-    use crate::parser::cst::{Expr, ExprKind};
-    use crate::parser::parser_impl::ParseError;
-    use crate::parser::Parser;
+    use crate::parser::{Expr, ExprKind, ParseError, Parser};
 
     fn span() -> Span {
         Span { lo: 0, hi: 0 }

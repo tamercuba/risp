@@ -1,0 +1,63 @@
+use super::{Interpreter, RuntimeError, Value};
+use crate::lexer::Span;
+use crate::sema::AstNode;
+
+impl Interpreter {
+    pub(super) fn eval_var(&self, id: u32, span: Span) -> Result<Value, RuntimeError> {
+        match self.env.borrow().get_local(id) {
+            Some(v) => Ok(v),
+            None => Err(RuntimeError::UndefinedVariable {
+                name: "todo".to_string(),
+                span,
+            }),
+        }
+    }
+
+    pub(super) fn eval_global_var(&self, name: &str, span: Span) -> Result<Value, RuntimeError> {
+        match self.env.borrow().get_global(name) {
+            Some(v) => Ok(v),
+            None => Err(RuntimeError::UndefinedVariable {
+                name: name.to_string(),
+                span,
+            }),
+        }
+    }
+
+    pub(super) fn eval_list_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
+        elems
+            .iter()
+            .map(|e| self.eval(e))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::List)
+    }
+
+    pub(super) fn eval_vector_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
+        elems
+            .iter()
+            .map(|e| self.eval(e))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Vector)
+    }
+
+    pub(super) fn eval_map_literal(
+        &mut self,
+        pairs: &[(AstNode, AstNode)],
+    ) -> Result<Value, RuntimeError> {
+        pairs
+            .iter()
+            .map(|(k, v)| Ok((self.eval(k)?, self.eval(v)?)))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Map)
+    }
+
+    pub(super) fn eval_set_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
+        let mut values: Vec<Value> = vec![];
+        for elem in elems {
+            let v = self.eval(elem)?;
+            if !values.contains(&v) {
+                values.push(v);
+            }
+        }
+        Ok(Value::Set(values))
+    }
+}

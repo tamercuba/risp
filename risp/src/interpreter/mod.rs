@@ -1,10 +1,10 @@
-#![allow(dead_code)]
 mod builtins;
 mod env;
-pub mod implementation;
+mod implementation;
 #[cfg(test)]
 mod test_interpreter;
 mod value;
 
 pub use env::Env;
 pub use implementation::Interpreter;
+pub use value::{Callable, RuntimeError, Value};

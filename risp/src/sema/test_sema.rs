@@ -2,7 +2,7 @@
 mod tests {
     use crate::lexer::Lexer;
     use crate::parser::Parser;
-    use crate::sema::node::{analyze, AnalyzeError, AstNode, Node};
+    use crate::sema::{analyze, AnalyzeError, AstNode, Node};
 
     fn parse(input: &str) -> Vec<AstNode> {
         let cst = Parser::parse(Lexer::tokenize(input)).unwrap();

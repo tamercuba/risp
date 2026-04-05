@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::{cell::Cell, collections::HashMap, rc::Rc};
 
 pub struct Scope<'a> {

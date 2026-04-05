@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::interpreter::implementation::Interpreter;
-    use crate::interpreter::value::Value;
+    use crate::interpreter::{Interpreter, Value};
 
     fn run(source: &str) -> Value {
         Interpreter::new(false).run(source).unwrap()

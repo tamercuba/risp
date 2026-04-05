@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::lexer::token::Content;
-    use crate::lexer::{Lexer, Span, Token};
+    use crate::lexer::{Content, Lexer, Span, Token};
 
     fn span(lo: u32, hi: u32) -> Span {
         Span { lo, hi }

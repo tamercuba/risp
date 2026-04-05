@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::lexer::Span;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,11 +23,6 @@ pub struct Expr {
     pub span: Span,
 }
 
-impl Expr {
-    pub fn new(kind: ExprKind, span: Span) -> Self {
-        Expr { kind, span }
-    }
-}
 
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {

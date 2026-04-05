@@ -1,6 +1,5 @@
-#![allow(dead_code)]
 use crate::lexer::Span;
-use crate::sema::node::AstNode;
+use crate::sema::AstNode;
 use std::{cell::RefCell, rc::Rc};
 
 use super::env::Env;
@@ -24,6 +23,15 @@ pub enum RuntimeError {
     TypeError {
         expected: &'static str,
         got: &'static str,
+        span: Span,
+    },
+    UnsupportedType {
+        t: &'static str,
+        span: Span,
+    },
+    IndexOutOfBounds {
+        max_accessible: usize,
+        got: usize,
         span: Span,
     },
     DivisionByZero(Span),
@@ -106,14 +114,26 @@ impl std::fmt::Display for RuntimeError {
             }
             RuntimeError::NotCallable { .. } => write!(f, "(not-callable)"),
             RuntimeError::WrongArity { expected, got, .. } => {
-                write!(f, "(wrong-number-of-args :expected {expected} :got {got})")
+                write!(
+                    f,
+                    "(wrong-number-of-args\n  (expected {expected})\n  (got {got}))"
+                )
             }
             RuntimeError::TypeError { expected, got, .. } => {
-                write!(f, "(type-error :expected {expected} :got {got})")
+                write!(f, "(type-error\n  (expected {expected})\n  (got {got}))")
             }
             RuntimeError::DivisionByZero(_) => write!(f, "(division-by-zero)"),
-            RuntimeError::ParseError(msg) => write!(f, "(parse-error {msg})"),
+            RuntimeError::ParseError(msg) => write!(f, "(parse-error\n  {msg})"),
             RuntimeError::AnalyzeError(msg) => write!(f, "(analyze-error {msg})"),
+            RuntimeError::UnsupportedType { t, span: _ } => write!(f, "(unsupported-type \"{t})\""),
+            RuntimeError::IndexOutOfBounds {
+                max_accessible,
+                got,
+                span: _,
+            } => write!(
+                f,
+                "(index-out-of-bounds\n  (max-index {max_accessible})\n  (got {got}))",
+            ),
         }
     }
 }
