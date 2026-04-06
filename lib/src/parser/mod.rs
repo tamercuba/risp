@@ -26,7 +26,11 @@ impl std::fmt::Display for ParseError {
             ParseError::UnmatchedClose(ch, span) => {
                 write!(f, "(unmatched-close :char '{ch}' :at {})", span.lo)
             }
-            ParseError::MismatchedDelimiter { expected, found, span } => write!(
+            ParseError::MismatchedDelimiter {
+                expected,
+                found,
+                span,
+            } => write!(
                 f,
                 "(mismatched-delimiter :expected '{expected}' :found '{found}' :at {})",
                 span.lo
@@ -110,12 +114,10 @@ impl Parser {
 
         if let Some(frame) = self.stack.last() {
             let span = match frame {
-                Frame::List(_, s) | Frame::Vector(_, s) | Frame::Map(_, s) | Frame::Set(_, s) => {
-                    s.clone()
-                }
-                Frame::Quote(s) => s.clone(),
+                Frame::List(_, s) | Frame::Vector(_, s) | Frame::Map(_, s) | Frame::Set(_, s) => s,
+                Frame::Quote(s) => s,
             };
-            return Err(ParseError::UnmatchedOpen(span));
+            return Err(ParseError::UnmatchedOpen(*span));
         }
 
         Ok(self.result)
@@ -147,7 +149,7 @@ impl Parser {
                 Frame::Quote(s) => s,
                 _ => unreachable!(),
             };
-            let full_span = quote_span.full(expr.span.clone());
+            let full_span = quote_span.full(expr.span);
             let quoted = Expr {
                 kind: ExprKind::Quote(Box::new(expr)),
                 span: full_span,

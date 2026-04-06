@@ -1,6 +1,19 @@
 use super::{Interpreter, RuntimeError, Value};
+use crate::collections::RispList;
 use crate::lexer::Span;
 use crate::sema::AstNode;
+
+fn to_vec(val: Value, span: Span) -> Result<Vec<Value>, RuntimeError> {
+    match val {
+        Value::List(l) => Ok(l.iter().cloned().collect()),
+        Value::Vector(v) => Ok(v),
+        v => Err(RuntimeError::TypeError {
+            expected: "list or vector",
+            got: v.type_name(),
+            span,
+        }),
+    }
+}
 
 impl Interpreter {
     // (apply f arg* coll)
@@ -21,24 +34,14 @@ impl Interpreter {
 
         let mut all_args: Vec<(Value, Span)> = vec![];
         for arg in &args[1..args.len() - 1] {
-            all_args.push((self.eval(arg)?, arg.span.clone()));
+            all_args.push((self.eval(arg)?, arg.span));
         }
 
         let last = &args[args.len() - 1];
-        match self.eval(last)? {
-            Value::List(v) | Value::Vector(v) => {
-                all_args.extend(v.into_iter().map(|v| (v, last.span.clone())));
-            }
-            v => {
-                return Err(RuntimeError::TypeError {
-                    expected: "list or vector",
-                    got: v.type_name(),
-                    span: last.span.clone(),
-                })
-            }
-        }
+        let last_items = to_vec(self.eval(last)?, last.span)?;
+        all_args.extend(last_items.into_iter().map(|v| (v, last.span)));
 
-        self.call_value(func, all_args, span)
+        self.call_value(&func, all_args, span)
     }
 
     // (map f coll)
@@ -56,23 +59,15 @@ impl Interpreter {
         }
 
         let func = self.eval(&args[0])?;
-        let coll_span = args[1].span.clone();
-
-        let items = match self.eval(&args[1])? {
-            Value::List(v) | Value::Vector(v) => Ok(v),
-            v => Err(RuntimeError::TypeError {
-                expected: "list or vector",
-                got: v.type_name(),
-                span: coll_span.clone(),
-            }),
-        }?;
+        let coll_span = args[1].span;
+        let items = to_vec(self.eval(&args[1])?, coll_span)?;
 
         let result = items
             .into_iter()
-            .map(|v| self.call_value(func.clone(), vec![(v, coll_span.clone())], span.clone()))
+            .map(|v| self.call_value(&func, vec![(v, coll_span)], span))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(Value::List(result))
+        Ok(Value::Vector(result))
     }
 
     // (filter f coll)
@@ -90,25 +85,13 @@ impl Interpreter {
         }
 
         let func = self.eval(&args[0])?;
-        let coll_span = args[1].span.clone();
-
-        let items = match self.eval(&args[1])? {
-            Value::List(v) | Value::Vector(v) => Ok(v),
-            v => Err(RuntimeError::TypeError {
-                expected: "list or vector",
-                got: v.type_name(),
-                span: coll_span.clone(),
-            }),
-        }?;
+        let coll_span = args[1].span;
+        let items = to_vec(self.eval(&args[1])?, coll_span)?;
 
         let mut result = vec![];
         for v in items {
             let keep = !matches!(
-                self.call_value(
-                    func.clone(),
-                    vec![(v.clone(), coll_span.clone())],
-                    span.clone()
-                )?,
+                self.call_value(&func, vec![(v.clone(), coll_span)], span)?,
                 Value::Nil | Value::Bool(false)
             );
             if keep {
@@ -116,7 +99,12 @@ impl Interpreter {
             }
         }
 
-        Ok(Value::List(result))
+        Ok(Value::List(
+            result
+                .into_iter()
+                .rev()
+                .fold(RispList::empty(), |acc, v| RispList::cons(v, &acc)),
+        ))
     }
 
     // (reduce f init coll) ou (reduce f coll)
@@ -137,26 +125,10 @@ impl Interpreter {
 
         let (mut acc, items) = if args.len() == 3 {
             let init = self.eval(&args[1])?;
-            let coll_span = args[2].span.clone();
-            let items = match self.eval(&args[2])? {
-                Value::List(v) | Value::Vector(v) => Ok(v),
-                v => Err(RuntimeError::TypeError {
-                    expected: "list or vector",
-                    got: v.type_name(),
-                    span: coll_span,
-                }),
-            }?;
+            let items = to_vec(self.eval(&args[2])?, args[2].span)?;
             (init, items)
         } else {
-            let coll_span = args[1].span.clone();
-            let mut items = match self.eval(&args[1])? {
-                Value::List(v) | Value::Vector(v) => Ok(v),
-                v => Err(RuntimeError::TypeError {
-                    expected: "list or vector",
-                    got: v.type_name(),
-                    span: coll_span,
-                }),
-            }?;
+            let mut items = to_vec(self.eval(&args[1])?, args[1].span)?;
             if items.is_empty() {
                 return Ok(Value::Nil);
             }
@@ -165,12 +137,8 @@ impl Interpreter {
         };
 
         for v in items {
-            let elem_span = args[args.len() - 1].span.clone();
-            acc = self.call_value(
-                func.clone(),
-                vec![(acc, span.clone()), (v, elem_span)],
-                span.clone(),
-            )?;
+            let elem_span = args[args.len() - 1].span;
+            acc = self.call_value(&func, vec![(acc, span), (v, elem_span)], span)?;
         }
 
         Ok(acc)

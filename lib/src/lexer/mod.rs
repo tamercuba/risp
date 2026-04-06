@@ -104,24 +104,24 @@ impl Lexer {
     fn classify_buffer(&self, span: Span) -> Token {
         None.or_else(|| {
             self.in_string
-                .then(|| Token::String(Content::new(self.buffer[1..].to_string(), span.clone())))
+                .then(|| Token::String(Content::new(self.buffer[1..].to_string(), span)))
         })
         .or_else(|| {
             self.buffer
                 .starts_with(':')
-                .then(|| Token::Keyword(Content::new(self.buffer[1..].to_string(), span.clone())))
+                .then(|| Token::Keyword(Content::new(self.buffer[1..].to_string(), span)))
         })
         .or_else(|| {
             self.buffer
                 .parse::<i64>()
                 .ok()
-                .map(|v| Token::Long(Content::new(v, span.clone())))
+                .map(|v| Token::Long(Content::new(v, span)))
         })
         .or_else(|| {
             self.buffer
                 .parse::<f64>()
                 .ok()
-                .map(|v| Token::Double(Content::new(v, span.clone())))
+                .map(|v| Token::Double(Content::new(v, span)))
         })
         .unwrap_or_else(|| Token::Symbol(Content::new(self.buffer.clone(), span)))
     }

@@ -1,6 +1,8 @@
 mod ast_scope;
 mod node;
 
+use std::rc::Rc;
+
 use self::ast_scope::Scope;
 pub use self::node::{AnalyzeError, AstNode, Node};
 use crate::lexer::Span;
@@ -17,7 +19,7 @@ pub fn analyze(cst: Vec<Expr>) -> Result<Vec<AstNode>, AnalyzeError> {
 }
 
 fn analyze_expr(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
-    let span = expr.span.clone();
+    let span = expr.span;
     match expr.kind {
         ExprKind::Long(n) => Ok(AstNode::new(Node::Long(n), span)),
         ExprKind::Double(n) => Ok(AstNode::new(Node::Double(n), span)),
@@ -56,7 +58,7 @@ fn analyze_expr(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
 }
 
 fn analyze_quoted(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
-    let span = expr.span.clone();
+    let span = expr.span;
     match expr.kind {
         ExprKind::Symbol(s) => Ok(AstNode::new(Node::Symbol(s), span)),
         ExprKind::List(elems) => {
@@ -152,12 +154,12 @@ fn analyze_let(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, A
 
     // 0 is the let symbol
     let bindings_expr = elems[1].clone();
-    let bindings_span = bindings_expr.span.clone();
+    let bindings_span = bindings_expr.span;
 
     let mut child_scope = scope.enter_scope();
     let bindings_array: Vec<Expr> = match bindings_expr.kind {
         ExprKind::Vector(l) => Ok(l),
-        _ => Err(AnalyzeError::InvalidBindings(bindings_span.clone())),
+        _ => Err(AnalyzeError::InvalidBindings(bindings_span)),
     }?;
 
     if !bindings_array.len().is_multiple_of(2) {
@@ -201,7 +203,7 @@ fn analyze_fn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, An
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let body = Box::new(analyze_expr(elems[2].clone(), &child_scope)?);
+    let body = Rc::new(analyze_expr(elems[2].clone(), &child_scope)?);
 
     Ok(AstNode::new(Node::Fn { params, body }, span))
 }
@@ -233,8 +235,8 @@ fn analyze_defn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, 
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let body = Box::new(analyze_expr(elems[3].clone(), &child_scope)?);
-    let value = Box::new(AstNode::new(Node::Fn { params, body }, span.clone()));
+    let body = Rc::new(analyze_expr(elems[3].clone(), &child_scope)?);
+    let value = Box::new(AstNode::new(Node::Fn { params, body }, span));
 
     Ok(AstNode::new(Node::Def { name, value }, span))
 }

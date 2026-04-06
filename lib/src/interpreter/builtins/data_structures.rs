@@ -2,9 +2,7 @@ use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
 fn list(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
-    Ok(Value::List(
-        args.iter().map(|t| t.0.clone()).collect::<Vec<Value>>(),
-    ))
+    Ok(Value::List(args.iter().map(|t| t.0.clone()).collect()))
 }
 
 fn vec(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {

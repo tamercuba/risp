@@ -1,3 +1,4 @@
+mod collections;
 mod interpreter;
 mod lexer;
 mod parser;

@@ -14,7 +14,7 @@ impl Interpreter {
                         return Err(RuntimeError::TypeError {
                             expected: "bool",
                             got: v.type_name(),
-                            span: cond.span.clone(),
+                            span: cond.span,
                         })
                     }
                 };

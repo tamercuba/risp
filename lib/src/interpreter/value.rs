@@ -1,3 +1,4 @@
+use crate::collections::RispList;
 use crate::lexer::Span;
 use crate::sema::AstNode;
 use std::{cell::RefCell, rc::Rc};
@@ -43,7 +44,7 @@ pub enum RuntimeError {
 pub enum Callable {
     Closure {
         params: Vec<u32>,
-        body: Box<AstNode>,
+        body: Rc<AstNode>,
         env: Rc<RefCell<Env>>,
     },
     Builtin {
@@ -60,7 +61,7 @@ pub enum Value {
     Double(f64),
     String(String),
     Keyword(String),
-    List(Vec<Value>),
+    List(RispList<Value>),
     Vector(Vec<Value>),
     Map(Vec<(Value, Value)>),
     Set(Vec<Value>),
@@ -147,16 +148,7 @@ impl std::fmt::Display for Value {
             Value::Double(n) => write!(f, "{n}"),
             Value::String(s) => write!(f, "{s}"),
             Value::Keyword(s) => write!(f, ":{s}"),
-            Value::List(v) => {
-                write!(f, "(")?;
-                for (i, e) in v.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, " ")?;
-                    }
-                    write!(f, "{e}")?;
-                }
-                write!(f, ")")
-            }
+            Value::List(v) => write!(f, "{v}"),
             Value::Vector(v) => {
                 write!(f, "[")?;
                 for (i, e) in v.iter().enumerate() {

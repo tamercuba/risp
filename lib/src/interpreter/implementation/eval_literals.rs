@@ -1,4 +1,5 @@
 use super::{Interpreter, RuntimeError, Value};
+use crate::collections::RispList;
 use crate::lexer::Span;
 use crate::sema::AstNode;
 
@@ -24,11 +25,17 @@ impl Interpreter {
     }
 
     pub(super) fn eval_list_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
-        elems
+        let values = elems
             .iter()
             .map(|e| self.eval(e))
-            .collect::<Result<Vec<_>, _>>()
-            .map(Value::List)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let list = values
+            .into_iter()
+            .rev()
+            .fold(RispList::empty(), |acc, val| RispList::cons(val, &acc));
+
+        Ok(Value::List(list))
     }
 
     pub(super) fn eval_vector_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {

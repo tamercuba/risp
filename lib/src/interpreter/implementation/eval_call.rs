@@ -7,7 +7,7 @@ use std::rc::Rc;
 impl Interpreter {
     pub(super) fn call_value(
         &mut self,
-        func: Value,
+        func: &Value,
         args: Vec<(Value, Span)>,
         span: Span,
     ) -> Result<Value, RuntimeError> {
@@ -42,10 +42,10 @@ impl Interpreter {
             Node::Call { callee, args } => {
                 if let Node::GlobalVar(name) = &callee.node {
                     match name.as_str() {
-                        "apply" => return self.eval_apply(args, node.span.clone()),
-                        "map" => return self.eval_map_hof(args, node.span.clone()),
-                        "filter" => return self.eval_filter(args, node.span.clone()),
-                        "reduce" => return self.eval_reduce(args, node.span.clone()),
+                        "apply" => return self.eval_apply(args, node.span),
+                        "map" => return self.eval_map_hof(args, node.span),
+                        "filter" => return self.eval_filter(args, node.span),
+                        "reduce" => return self.eval_reduce(args, node.span),
                         _ => {}
                     }
                 }
@@ -53,22 +53,16 @@ impl Interpreter {
                 let callee_value = self.eval(callee)?;
                 match callee_value {
                     Value::Callable(callable) => {
-                        let evaluated_args: Result<Vec<(Value, Span)>, _> = args
-                            .iter()
-                            .map(|a| Ok((self.eval(a)?, a.span.clone())))
-                            .collect();
-                        self.call_value(
-                            Value::Callable(callable),
-                            evaluated_args?,
-                            node.span.clone(),
-                        )
+                        let evaluated_args: Result<Vec<(Value, Span)>, _> =
+                            args.iter().map(|a| Ok((self.eval(a)?, a.span))).collect();
+                        self.call_value(&Value::Callable(callable), evaluated_args?, node.span)
                     }
                     Value::Keyword(v) => {
                         if args.len() != 1 {
                             return Err(RuntimeError::WrongArity {
                                 expected: 1,
                                 got: args.len(),
-                                span: node.span.clone(),
+                                span: node.span,
                             });
                         }
                         let arg = self.eval(&args[0])?;
@@ -81,13 +75,11 @@ impl Interpreter {
                             _ => Err(RuntimeError::TypeError {
                                 expected: "map",
                                 got: arg.type_name(),
-                                span: args[0].span.clone(),
+                                span: args[0].span,
                             }),
                         }
                     }
-                    _ => Err(RuntimeError::NotCallable {
-                        span: node.span.clone(),
-                    }),
+                    _ => Err(RuntimeError::NotCallable { span: node.span }),
                 }
             }
             _ => unreachable!(),

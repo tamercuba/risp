@@ -5,7 +5,13 @@ mod math;
 mod sequences;
 mod stdio;
 #[cfg(test)]
+mod test_data_structures;
+#[cfg(test)]
+mod test_hof;
+#[cfg(test)]
 mod test_math;
+#[cfg(test)]
+mod test_sequences;
 
 pub fn builtins() -> Vec<(&'static str, Value)> {
     math::builtins()

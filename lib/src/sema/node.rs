@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::lexer::Span;
 
 #[derive(Debug)]
@@ -69,7 +71,7 @@ pub enum Node {
     },
     Fn {
         params: Vec<u32>,
-        body: Box<AstNode>,
+        body: Rc<AstNode>,
     },
     Call {
         callee: Box<AstNode>,

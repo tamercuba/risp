@@ -5,3 +5,4 @@ build-repl = "build -p repl" # Build the Risp REPL
 test-lib = "test --lib -p risp --verbose" # Run the tests for the risp library
 test-match = "test --lib -p risp --verbose --" # Run the tests for the risp library that match the exact filter
 repl = "run -p repl" # Run Risp REPL
+showcase = "run -p risp -- resources/examples/showcase.clj" # Run the showcase example

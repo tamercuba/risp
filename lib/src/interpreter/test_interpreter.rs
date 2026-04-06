@@ -178,4 +178,52 @@ mod tests {
     fn eval_empty_source_returns_nil() {
         assert!(matches!(run(""), Value::Nil));
     }
+
+    #[test]
+    fn eval_quoted_list_literal() {
+        assert!(matches!(run("'(1 2 3)"), Value::List(l) if l.len() == 3));
+    }
+
+    #[test]
+    fn eval_quoted_list_first_element() {
+        assert!(matches!(run("'(10 20)"), Value::List(l) if l.first() == Some(&Value::Long(10))));
+    }
+
+    #[test]
+    fn eval_set_literal_deduplicates() {
+        assert!(matches!(run("#{1 2 3 3}"), Value::Set(s) if s.len() == 3));
+    }
+
+    #[test]
+    fn eval_set_literal_all_unique() {
+        assert!(matches!(run("#{1 2 3}"), Value::Set(s) if s.len() == 3));
+    }
+
+    #[test]
+    fn eval_quoted_symbol() {
+        assert!(matches!(run("'foo"), Value::Symbol(s) if s == "foo"));
+    }
+
+    #[test]
+    fn eval_do_returns_last() {
+        assert!(matches!(run("(do 1 2 3)"), Value::Long(3)));
+    }
+
+    #[test]
+    fn eval_do_single_expr() {
+        assert!(matches!(run("(do 42)"), Value::Long(42)));
+    }
+
+    #[test]
+    fn eval_if_no_else_false_returns_nil() {
+        assert!(matches!(run("(if false 1)"), Value::Nil));
+    }
+
+    #[test]
+    fn eval_closure_captures_outer_env() {
+        assert!(matches!(
+            run("(let [n 5] ((fn [] n)))"),
+            Value::Long(5)
+        ));
+    }
 }

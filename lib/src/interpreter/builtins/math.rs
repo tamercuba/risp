@@ -27,7 +27,7 @@ fn sum(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
             w => Err(RuntimeError::TypeError {
                 expected: "long or double",
                 got: w.type_name(),
-                span: span.clone(),
+                span: *span,
             }),
         }?;
     }
@@ -56,7 +56,7 @@ fn minus(args: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
             return Err(RuntimeError::TypeError {
                 expected: "long or double",
                 got: w.type_name(),
-                span: first_span.clone(),
+                span: *first_span,
             })
         }
     };
@@ -90,7 +90,7 @@ fn minus(args: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
             w => Err(RuntimeError::TypeError {
                 expected: "long or double",
                 got: w.type_name(),
-                span: span.clone(),
+                span: *span,
             }),
         }?;
     }
@@ -128,7 +128,7 @@ fn times(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
             w => Err(RuntimeError::TypeError {
                 expected: "long or double",
                 got: w.type_name(),
-                span: span.clone(),
+                span: *span,
             }),
         }?;
     }

@@ -1,3 +1,4 @@
+use crate::collections::RispList;
 use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
@@ -7,7 +8,8 @@ use crate::lexer::Span;
 fn count(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     match elems.len() {
         1 => match elems[0].0.clone() {
-            Value::List(c) | Value::Vector(c) | Value::Set(c) => Ok(Value::Long(c.len() as i64)),
+            Value::List(c) => Ok(Value::Long(c.len() as i64)),
+            Value::Vector(c) | Value::Set(c) => Ok(Value::Long(c.len() as i64)),
             Value::Map(c) => Ok(Value::Long(c.len() as i64)),
             v => Err(RuntimeError::TypeError {
                 expected: "seq",
@@ -25,8 +27,12 @@ fn count(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
 
 fn first(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     match elems.len() {
-        1 => match (elems[0].0.clone(), elems[0].1.clone()) {
-            (Value::List(c), _) | (Value::Set(c), _) | (Value::Vector(c), _) => match c.first() {
+        1 => match (elems[0].0.clone(), elems[0].1) {
+            (Value::List(c), _) => match c.first() {
+                Some(v) => Ok(v.clone()),
+                None => Ok(Value::Nil),
+            },
+            (Value::Set(c), _) | (Value::Vector(c), _) => match c.first() {
                 Some(v) => Ok(v.clone()),
                 None => Ok(Value::Nil),
             },
@@ -60,11 +66,18 @@ fn rest(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     let col = elems.first().unwrap();
 
     match col {
-        (Value::List(c), _) | (Value::Set(c), _) | (Value::Vector(c), _) => {
+        (Value::List(c), _) => {
             if !c.is_empty() {
-                Ok(Value::List(c[1..].to_vec()))
+                Ok(Value::List(c.rest()))
             } else {
-                Ok(Value::List([].to_vec()))
+                Ok(Value::List(RispList::empty()))
+            }
+        }
+        (Value::Set(c), _) | (Value::Vector(c), _) => {
+            if !c.is_empty() {
+                Ok(Value::List(c[1..].iter().cloned().collect()))
+            } else {
+                Ok(Value::List(RispList::empty()))
             }
         }
         (Value::Map(m), _) => {
@@ -72,16 +85,16 @@ fn rest(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
                 let result = m[1..]
                     .iter()
                     .map(|(k, v)| Value::Vector(vec![k.clone(), v.clone()]))
-                    .collect::<Vec<Value>>();
+                    .collect::<RispList<Value>>();
                 Ok(Value::List(result))
             } else {
-                Ok(Value::List(vec![]))
+                Ok(Value::List(RispList::empty()))
             }
         }
         (v, s) => Err(RuntimeError::TypeError {
             expected: "seq",
             got: v.type_name(),
-            span: s.clone(),
+            span: *s,
         }),
     }
 }
@@ -98,7 +111,11 @@ fn second(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     let col = elems.first().unwrap();
 
     match col {
-        (Value::List(c), _) | (Value::Set(c), _) | (Value::Vector(c), _) => {
+        (Value::List(c), _) => match c.nth(1) {
+            Ok(Some(v)) => Ok(v.clone()),
+            Ok(None) | Err(_) => Ok(Value::Nil),
+        },
+        (Value::Set(c), _) | (Value::Vector(c), _) => {
             if c.len() < 2 {
                 Ok(Value::Nil)
             } else {
@@ -116,15 +133,19 @@ fn second(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
         (v, s) => Err(RuntimeError::TypeError {
             expected: "seq",
             got: v.type_name(),
-            span: s.clone(),
+            span: *s,
         }),
     }
 }
 
 fn last(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     match elems.len() {
-        1 => match (elems[0].0.clone(), elems[0].1.clone()) {
-            (Value::List(c), _) | (Value::Set(c), _) | (Value::Vector(c), _) => match c.last() {
+        1 => match (elems[0].0.clone(), elems[0].1) {
+            (Value::List(c), _) => match c.last() {
+                Some(v) => Ok(v.clone()),
+                None => Ok(Value::Nil),
+            },
+            (Value::Set(c), _) | (Value::Vector(c), _) => match c.last() {
                 Some(v) => Ok(v.clone()),
                 None => Ok(Value::Nil),
             },
@@ -164,23 +185,31 @@ fn nth(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
             got: "negative long",
             span: n_span,
         }),
-        (Value::List(c), Value::Long(n))
-        | (Value::Set(c), Value::Long(n))
-        | (Value::Vector(c), Value::Long(n)) => match c.get(n as usize) {
-            Some(v) => Ok(v.clone()),
-            None => Err(RuntimeError::IndexOutOfBounds {
+        (Value::List(c), Value::Long(n)) => match c.get(n as usize) {
+            Ok(Some(v)) => Ok(v.clone()),
+            Ok(None) | Err(_) => Err(RuntimeError::IndexOutOfBounds {
                 max_accessible: c.len() - 1,
                 got: n as usize,
-                span: col_span.clone(),
+                span: col_span,
             }),
         },
+        (Value::Set(c), Value::Long(n)) | (Value::Vector(c), Value::Long(n)) => {
+            match c.get(n as usize) {
+                Some(v) => Ok(v.clone()),
+                None => Err(RuntimeError::IndexOutOfBounds {
+                    max_accessible: c.len() - 1,
+                    got: n as usize,
+                    span: col_span,
+                }),
+            }
+        }
         (Value::Map(_), _) => Err(RuntimeError::UnsupportedType {
             t: col.type_name(),
-            span: col_span.clone(),
+            span: col_span,
         }),
         (value, _) => Err(RuntimeError::UnsupportedType {
             t: value.type_name(),
-            span: col_span.clone(),
+            span: col_span,
         }),
     }
 }
@@ -203,11 +232,7 @@ fn conj(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
             result.push(val.clone());
             Ok(Value::Vector(result))
         }
-        Value::List(l) => {
-            let mut result = vec![val.clone()];
-            result.extend(l.clone());
-            Ok(Value::List(result))
-        }
+        Value::List(l) => Ok(Value::List(RispList::cons(val.clone(), l))),
         Value::Set(s) => {
             let mut result = s.clone();
             if !result.contains(val) {
@@ -232,7 +257,7 @@ fn conj(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
                 v => Err(RuntimeError::TypeError {
                     expected: "vector pair or map",
                     got: v.type_name(),
-                    span: val_span.clone(),
+                    span: *val_span,
                 }),
             }?;
 
@@ -247,7 +272,7 @@ fn conj(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
         v => Err(RuntimeError::TypeError {
             expected: "seq",
             got: v.type_name(),
-            span: col_span.clone(),
+            span: *col_span,
         }),
     }
 }
@@ -262,14 +287,13 @@ fn empty(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     }
 
     match elems.first().unwrap().clone() {
-        (Value::List(c), _) | (Value::Vector(c), _) | (Value::Set(c), _) => {
-            Ok(Value::Bool(c.is_empty()))
-        }
+        (Value::List(c), _) => Ok(Value::Bool(c.is_empty())),
+        (Value::Vector(c), _) | (Value::Set(c), _) => Ok(Value::Bool(c.is_empty())),
         (Value::Map(m), _) => Ok(Value::Bool(m.is_empty())),
         (v, s) => Err(RuntimeError::TypeError {
             expected: "collection",
             got: v.type_name(),
-            span: s.clone(),
+            span: s,
         }),
     }
 }
@@ -287,7 +311,8 @@ fn cons(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     let (col, col_span) = elems[1].clone();
 
     match (value.clone(), col) {
-        (_, Value::List(c)) | (_, Value::Vector(c)) | (_, Value::Set(c)) => {
+        (_, Value::List(c)) => Ok(Value::List(RispList::cons(value, &c))),
+        (_, Value::Vector(c)) | (_, Value::Set(c)) => {
             Ok(Value::List(std::iter::once(value).chain(c).collect()))
         }
         (_, Value::Map(m)) => {
