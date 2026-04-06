@@ -1,5 +1,5 @@
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/566ed174b0c64e27ace59f1a6356b0d4)](https://app.codacy.com/gh/tamercuba/risp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/566ed174b0c64e27ace59f1a6356b0d4)](https://app.codacy.com/gh/tamercuba/risp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/296a24f3b62f432fabce28c06a0a6c27)](https://app.codacy.com/gh/tamercuba/risp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/296a24f3b62f432fabce28c06a0a6c27)](https://app.codacy.com/gh/tamercuba/risp/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
 # RISP
 
