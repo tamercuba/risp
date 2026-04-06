@@ -3,6 +3,13 @@ use crate::collections::RispList;
 use crate::lexer::Span;
 use crate::sema::AstNode;
 
+fn seq_to_list(v: Value) -> Value {
+    match v {
+        Value::Vector(vec) => Value::List(vec.into_iter().collect()),
+        other => other,
+    }
+}
+
 impl Interpreter {
     pub(super) fn eval_var(&self, id: u32, span: Span) -> Result<Value, RuntimeError> {
         match self.env.borrow().get_local(id) {
@@ -60,7 +67,7 @@ impl Interpreter {
     pub(super) fn eval_set_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
         let mut values: Vec<Value> = vec![];
         for elem in elems {
-            let v = self.eval(elem)?;
+            let v = seq_to_list(self.eval(elem)?);
             if !values.contains(&v) {
                 values.push(v);
             }

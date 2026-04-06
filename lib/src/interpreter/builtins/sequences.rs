@@ -2,6 +2,13 @@ use crate::collections::RispList;
 use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
+fn seq_to_list(v: Value) -> Value {
+    match v {
+        Value::Vector(vec) => Value::List(vec.into_iter().collect()),
+        other => other,
+    }
+}
+
 //(concat [1 2] [3 4])
 //(seq [])
 
@@ -234,9 +241,10 @@ fn conj(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
         }
         Value::List(l) => Ok(Value::List(RispList::cons(val.clone(), l))),
         Value::Set(s) => {
+            let val = seq_to_list(val.clone());
             let mut result = s.clone();
-            if !result.contains(val) {
-                result.push(val.clone());
+            if !result.contains(&val) {
+                result.push(val);
             }
             Ok(Value::Set(result))
         }

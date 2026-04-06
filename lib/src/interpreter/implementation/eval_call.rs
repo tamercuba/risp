@@ -1,4 +1,5 @@
 use super::{Callable, Env, Interpreter, RuntimeError, Value};
+use crate::interpreter::value::ClosureArity;
 use crate::lexer::Span;
 use crate::sema::{AstNode, Node};
 use std::cell::RefCell;
@@ -14,19 +15,23 @@ impl Interpreter {
         match func {
             Value::Callable(callable) => match callable.as_ref() {
                 Callable::Builtin { func, .. } => func(&args, span),
-                Callable::Closure { params, body, env } => {
-                    if args.len() != params.len() {
-                        return Err(RuntimeError::WrongArity {
-                            expected: params.len(),
-                            got: args.len(),
-                            span,
-                        });
-                    }
+                Callable::Closure { arities, env } => {
+                    let arity = Self::select_arity(arities, args.len(), span)?;
                     let child_env = Rc::new(RefCell::new(Env::with_parent(env.clone())));
-                    for (param_id, (value, _)) in params.iter().zip(args) {
-                        child_env.borrow_mut().set_local(*param_id, value);
+                    for (param_id, (value, _)) in arity.params.iter().zip(args.iter()) {
+                        child_env.borrow_mut().set_local(*param_id, value.clone());
                     }
-                    let body = body.clone();
+                    if let Some(rest_id) = arity.variadic {
+                        let rest: Vec<Value> = args[arity.params.len()..]
+                            .iter()
+                            .map(|(v, _)| v.clone())
+                            .collect();
+                        let rest_list = rest.into_iter().collect();
+                        child_env
+                            .borrow_mut()
+                            .set_local(rest_id, Value::List(rest_list));
+                    }
+                    let body = arity.body.clone();
                     let saved = std::mem::replace(&mut self.env, child_env);
                     let result = self.eval(&body);
                     self.env = saved;
@@ -35,6 +40,27 @@ impl Interpreter {
             },
             _ => Err(RuntimeError::NotCallable { span }),
         }
+    }
+
+    fn select_arity(
+        arities: &[ClosureArity],
+        n_args: usize,
+        span: Span,
+    ) -> Result<&ClosureArity, RuntimeError> {
+        arities
+            .iter()
+            .find(|a| {
+                if a.variadic.is_some() {
+                    n_args >= a.params.len()
+                } else {
+                    n_args == a.params.len()
+                }
+            })
+            .ok_or_else(|| RuntimeError::WrongArity {
+                expected: arities.iter().map(|a| a.params.len()).min().unwrap_or(0),
+                got: n_args,
+                span,
+            })
     }
 
     pub(super) fn eval_call(&mut self, node: &AstNode) -> Result<Value, RuntimeError> {

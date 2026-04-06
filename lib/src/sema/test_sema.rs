@@ -84,7 +84,6 @@ mod tests {
 
     #[test]
     fn let_sequential_bindings() {
-        // b's value references a — a must be resolved as Var, not GlobalVar
         let result = parse("(let [a 1 b a] b)");
         let bindings = match &result[0].node {
             Node::Let { bindings, .. } => bindings,
@@ -97,7 +96,7 @@ mod tests {
     fn fn_params_resolved_as_var_in_body() {
         let result = parse("(fn [x] x)");
         let body = match &result[0].node {
-            Node::Fn { body, .. } => body,
+            Node::Fn { arities } => &arities[0].body,
             _ => panic!("expected Fn"),
         };
         assert!(matches!(body.node, Node::Var(_)));
@@ -107,7 +106,7 @@ mod tests {
     fn fn_body_unknown_symbol_becomes_global_var() {
         let result = parse("(fn [x] foo)");
         let body = match &result[0].node {
-            Node::Fn { body, .. } => body,
+            Node::Fn { arities } => &arities[0].body,
             _ => panic!("expected Fn"),
         };
         assert!(matches!(&body.node, Node::GlobalVar(s) if s == "foo"));
@@ -118,7 +117,7 @@ mod tests {
         let result = parse("(defn f [x] x)");
         let fn_body = match &result[0].node {
             Node::Def { value, .. } => match &value.node {
-                Node::Fn { body, .. } => body,
+                Node::Fn { arities } => &arities[0].body,
                 _ => panic!("expected Fn inside Def"),
             },
             _ => panic!("expected Def"),
@@ -255,7 +254,7 @@ mod tests {
         let result = parse("(fn [a b] (+ a b))");
         assert!(matches!(
             &result[0].node,
-            Node::Fn { params, .. } if params.len() == 2
+            Node::Fn { arities } if arities[0].params.len() == 2
         ));
     }
 
@@ -264,7 +263,7 @@ mod tests {
         let result = parse("(fn [] 42)");
         assert!(matches!(
             &result[0].node,
-            Node::Fn { params, .. } if params.is_empty()
+            Node::Fn { arities } if arities[0].params.is_empty()
         ));
     }
 
@@ -369,5 +368,146 @@ mod tests {
     fn error_empty_list() {
         let err = parse_err("()");
         assert!(matches!(err, AnalyzeError::InvalidExpression(_)));
+    }
+
+    #[test]
+    fn analyzes_fn_multi_arity() {
+        let result = parse("(fn ([] 0) ([x] x))");
+        match &result[0].node {
+            Node::Fn { arities } => {
+                assert_eq!(arities.len(), 2);
+                assert_eq!(arities[0].params.len(), 0);
+                assert_eq!(arities[1].params.len(), 1);
+            }
+            _ => panic!("expected Fn"),
+        }
+    }
+
+    #[test]
+    fn analyzes_fn_varargs() {
+        let result = parse("(fn [& rest] rest)");
+        match &result[0].node {
+            Node::Fn { arities } => {
+                assert_eq!(arities.len(), 1);
+                assert_eq!(arities[0].params.len(), 0);
+                assert!(arities[0].variadic.is_some());
+            }
+            _ => panic!("expected Fn"),
+        }
+    }
+
+    #[test]
+    fn analyzes_fn_fixed_and_varargs() {
+        let result = parse("(fn [a & rest] a)");
+        match &result[0].node {
+            Node::Fn { arities } => {
+                assert_eq!(arities[0].params.len(), 1);
+                assert!(arities[0].variadic.is_some());
+            }
+            _ => panic!("expected Fn"),
+        }
+    }
+
+    #[test]
+    fn error_fn_duplicate_arity() {
+        let err = parse_err("(fn ([x] x) ([y] y))");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_multiple_variadics() {
+        let err = parse_err("(fn ([& a] a) ([& b] b))");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_varargs_missing_name() {
+        let err = parse_err("(fn [a &] a)");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_varargs_non_symbol_rest_name() {
+        let err = parse_err("(fn [a & 1] a)");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_multi_arity_malformed_element() {
+        let err = parse_err("(fn ([] 0) bad)");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_no_args() {
+        let err = parse_err("(fn)");
+        assert!(matches!(err, AnalyzeError::InvalidArity { form: "fn", .. }));
+    }
+
+    #[test]
+    fn analyzes_loop() {
+        let result = parse("(loop [i 0] i)");
+        match &result[0].node {
+            Node::Loop { bindings, .. } => {
+                assert_eq!(bindings.len(), 1);
+            }
+            _ => panic!("expected Loop"),
+        }
+    }
+
+    #[test]
+    fn analyzes_loop_multiple_bindings() {
+        let result = parse("(loop [i 0 acc 1] acc)");
+        match &result[0].node {
+            Node::Loop { bindings, .. } => assert_eq!(bindings.len(), 2),
+            _ => panic!("expected Loop"),
+        }
+    }
+
+    #[test]
+    fn analyzes_loop_bindings_resolve_as_var() {
+        let result = parse("(loop [i 0] i)");
+        match &result[0].node {
+            Node::Loop { body, .. } => {
+                assert!(matches!(body.node, Node::Var(_)));
+            }
+            _ => panic!("expected Loop"),
+        }
+    }
+
+    #[test]
+    fn error_loop_wrong_arity() {
+        let err = parse_err("(loop [i 0])");
+        assert!(matches!(
+            err,
+            AnalyzeError::InvalidArity { form: "loop", .. }
+        ));
+    }
+
+    #[test]
+    fn error_loop_bindings_not_vector() {
+        let err = parse_err("(loop (i 0) i)");
+        assert!(matches!(err, AnalyzeError::InvalidBindings(_)));
+    }
+
+    #[test]
+    fn error_loop_odd_bindings() {
+        let err = parse_err("(loop [i] i)");
+        assert!(matches!(err, AnalyzeError::OddBindings(_)));
+    }
+
+    #[test]
+    fn analyzes_recur_no_args() {
+        let result = parse("(recur)");
+        assert!(matches!(result[0].node, Node::Recur(ref args) if args.is_empty()));
+    }
+
+    #[test]
+    fn analyzes_recur_with_args() {
+        let result = parse("(recur 1 2)");
+        match &result[0].node {
+            Node::Recur(args) => assert_eq!(args.len(), 2),
+            _ => panic!("expected Recur"),
+        }
     }
 }

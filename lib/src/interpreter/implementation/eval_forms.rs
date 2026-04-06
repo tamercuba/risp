@@ -52,9 +52,8 @@ impl Interpreter {
 
     pub(super) fn eval_fn(&self, node: &AstNode) -> Result<Value, RuntimeError> {
         match &node.node {
-            Node::Fn { params, body } => Ok(Value::Callable(Rc::new(Callable::Closure {
-                params: params.clone(),
-                body: body.clone(),
+            Node::Fn { arities } => Ok(Value::Callable(Rc::new(Callable::Closure {
+                arities: arities.iter().map(Into::into).collect(),
                 env: self.env.clone(),
             }))),
             _ => unreachable!(),

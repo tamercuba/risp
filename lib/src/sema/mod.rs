@@ -4,7 +4,7 @@ mod node;
 use std::rc::Rc;
 
 use self::ast_scope::Scope;
-pub use self::node::{AnalyzeError, AstNode, Node};
+pub use self::node::{AnalyzeError, AstNode, FnArity, Node};
 use crate::lexer::Span;
 use crate::parser::{Expr, ExprKind};
 
@@ -92,6 +92,8 @@ fn analyze_list(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, 
         Some(head) if is_symbol(head, "defn") => analyze_defn(elems, span, scope),
         Some(head) if is_symbol(head, "def") => analyze_def(elems, span, scope),
         Some(head) if is_symbol(head, "do") => analyze_do(elems, span, scope),
+        Some(head) if is_symbol(head, "loop") => analyze_loop(elems, span, scope),
+        Some(head) if is_symbol(head, "recur") => analyze_recur(elems, span, scope),
         _ => analyze_call(elems, span, scope),
     }
 }
@@ -183,62 +185,185 @@ fn analyze_let(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, A
     Ok(AstNode::new(Node::Let { bindings, body }, span))
 }
 
-fn analyze_fn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
-    // (fn [a b] (...))
-    if elems.len() != 3 {
-        return Err(AnalyzeError::InvalidArity { form: "fn", span });
-    }
-
-    let mut child_scope = scope.enter_scope();
-    let params_expr = elems[1].clone();
-    let params_values: Vec<Expr> = match (params_expr.kind, params_expr.span) {
-        (ExprKind::Vector(v), _) => Ok(v),
-        (_, params_span) => Err(AnalyzeError::InvalidFnParams(params_span)),
+fn analyze_fn_params(
+    params_expr: Expr,
+    scope: &mut Scope,
+) -> Result<(Vec<u32>, Option<u32>), AnalyzeError> {
+    let params_span = params_expr.span;
+    let param_exprs: Vec<Expr> = match params_expr.kind {
+        ExprKind::Vector(v) => Ok(v),
+        _ => Err(AnalyzeError::InvalidFnParams(params_span)),
     }?;
-    let params: Vec<u32> = params_values
+
+    let amp_pos = param_exprs
+        .iter()
+        .position(|e| matches!(&e.kind, ExprKind::Symbol(s) if s == "&"));
+
+    let (fixed_exprs, variadic_name) = match amp_pos {
+        None => (param_exprs, None),
+        Some(pos) => {
+            let rest = &param_exprs[pos + 1..];
+            if rest.len() != 1 {
+                return Err(AnalyzeError::InvalidFnParams(params_span));
+            }
+            let name = match rest[0].kind.clone() {
+                ExprKind::Symbol(name) => Ok(name),
+                _ => Err(AnalyzeError::InvalidFnParams(rest[0].span)),
+            }?;
+            (param_exprs[..pos].to_vec(), Some(name))
+        }
+    };
+
+    let params = fixed_exprs
         .into_iter()
         .map(|e| match e.kind {
-            ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
+            ExprKind::Symbol(name) => Ok(scope.bind(name)),
             _ => Err(AnalyzeError::InvalidFnParams(e.span)),
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<_, _>>()?;
 
-    let body = Rc::new(analyze_expr(elems[2].clone(), &child_scope)?);
+    let variadic = variadic_name.map(|name| scope.bind(name));
 
-    Ok(AstNode::new(Node::Fn { params, body }, span))
+    Ok((params, variadic))
+}
+
+fn analyze_fn_arity(
+    params_expr: Expr,
+    body_expr: Expr,
+    scope: &Scope,
+) -> Result<FnArity, AnalyzeError> {
+    let mut child_scope = scope.enter_scope();
+    let (params, variadic) = analyze_fn_params(params_expr, &mut child_scope)?;
+    let body = Rc::new(analyze_expr(body_expr, &child_scope)?);
+    Ok(FnArity {
+        params,
+        variadic,
+        body,
+    })
+}
+
+fn validate_arities(arities: &[FnArity], span: Span) -> Result<(), AnalyzeError> {
+    let mut seen_fixed_counts: Vec<usize> = vec![];
+    let mut variadic_count = 0usize;
+
+    for arity in arities {
+        if arity.variadic.is_some() {
+            variadic_count += 1;
+        } else {
+            let n = arity.params.len();
+            if seen_fixed_counts.contains(&n) {
+                return Err(AnalyzeError::InvalidFnParams(span));
+            }
+            seen_fixed_counts.push(n);
+        }
+    }
+
+    if variadic_count > 1 {
+        return Err(AnalyzeError::InvalidFnParams(span));
+    }
+
+    Ok(())
+}
+
+fn analyze_arities(
+    arity_exprs: &[Expr],
+    form: &'static str,
+    span: Span,
+    scope: &Scope,
+) -> Result<Vec<FnArity>, AnalyzeError> {
+    match arity_exprs {
+        [] => Err(AnalyzeError::InvalidArity { form, span }),
+        // single-arity sugar sem body: (fn [params])
+        [only] if matches!(only.kind, ExprKind::Vector(_)) => {
+            Err(AnalyzeError::InvalidArity { form, span })
+        }
+        // single-arity sugar: (fn [params] body)
+        [params, body] if matches!(params.kind, ExprKind::Vector(_)) => {
+            Ok(vec![analyze_fn_arity(params.clone(), body.clone(), scope)?])
+        }
+        // multi-arity: (fn ([params] body) ...)
+        exprs => exprs
+            .iter()
+            .map(|arity_expr| match &arity_expr.kind {
+                ExprKind::List(elems) if elems.len() == 2 => {
+                    analyze_fn_arity(elems[0].clone(), elems[1].clone(), scope)
+                }
+                _ => Err(AnalyzeError::InvalidFnParams(arity_expr.span)),
+            })
+            .collect(),
+    }
+}
+
+fn analyze_fn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    if elems.len() < 2 {
+        return Err(AnalyzeError::InvalidArity { form: "fn", span });
+    }
+    let arities = analyze_arities(&elems[1..], "fn", span, scope)?;
+    validate_arities(&arities, span)?;
+    Ok(AstNode::new(Node::Fn { arities }, span))
 }
 
 fn analyze_defn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
-    // (defn bla [a b] (...))
-
-    if elems.len() != 4 {
+    // (defn name [params] body)          — single arity
+    // (defn name ([params] body) ...)    — multi-arity
+    if elems.len() < 3 {
         return Err(AnalyzeError::InvalidArity { form: "defn", span });
     }
 
-    let symbol_expr = elems[1].clone();
-    let name = match (symbol_expr.kind, symbol_expr.span) {
+    let name = match (elems[1].kind.clone(), elems[1].span) {
         (ExprKind::Symbol(name), _) => Ok(name),
         (_, s) => Err(AnalyzeError::InvalidBindingKey(s)),
     }?;
 
-    let params_expr = elems[2].clone();
-    let params_values: Vec<Expr> = match (params_expr.kind, params_expr.span) {
-        (ExprKind::Vector(v), _) => Ok(v),
-        (_, params_span) => Err(AnalyzeError::InvalidFnParams(params_span)),
-    }?;
-    let mut child_scope = scope.enter_scope();
-    let params: Vec<u32> = params_values
-        .into_iter()
-        .map(|e| match e.kind {
-            ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
-            _ => Err(AnalyzeError::InvalidFnParams(e.span)),
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let arities = analyze_arities(&elems[2..], "defn", span, scope)?;
+    validate_arities(&arities, span)?;
 
-    let body = Rc::new(analyze_expr(elems[3].clone(), &child_scope)?);
-    let value = Box::new(AstNode::new(Node::Fn { params, body }, span));
-
+    let value = Box::new(AstNode::new(Node::Fn { arities }, span));
     Ok(AstNode::new(Node::Def { name, value }, span))
+}
+
+fn analyze_loop(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    // (loop [x 0] body)
+    if elems.len() != 3 {
+        return Err(AnalyzeError::InvalidArity { form: "loop", span });
+    }
+
+    let bindings_expr = elems[1].clone();
+    let bindings_span = bindings_expr.span;
+    let mut child_scope = scope.enter_scope();
+
+    let bindings_array: Vec<Expr> = match bindings_expr.kind {
+        ExprKind::Vector(l) => Ok(l),
+        _ => Err(AnalyzeError::InvalidBindings(bindings_span)),
+    }?;
+
+    if !bindings_array.len().is_multiple_of(2) {
+        return Err(AnalyzeError::OddBindings(bindings_span));
+    }
+
+    let mut iter = bindings_array.into_iter();
+    let mut bindings: Vec<(u32, AstNode)> = vec![];
+
+    while let (Some(k), Some(v)) = (iter.next(), iter.next()) {
+        let key = match k.kind {
+            ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
+            _ => Err(AnalyzeError::InvalidBindingKey(k.span)),
+        }?;
+        let val = analyze_expr(v, &child_scope)?;
+        bindings.push((key, val));
+    }
+
+    let body = Box::new(analyze_expr(elems[2].clone(), &child_scope)?);
+    Ok(AstNode::new(Node::Loop { bindings, body }, span))
+}
+
+fn analyze_recur(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    // (recur expr...)
+    let args = elems[1..]
+        .iter()
+        .map(|e| analyze_expr(e.clone(), scope))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(AstNode::new(Node::Recur(args), span))
 }
 
 fn analyze_call(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
