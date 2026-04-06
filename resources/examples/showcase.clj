@@ -55,6 +55,25 @@
 (def tamanho  (count vetor))
 (def terceiro (nth vetor 2))
 
+; --- loop / recur ---
+(def contagem
+  (loop [i 0 acc 0]
+    (if (> i 5)
+      acc
+      (recur (+ i 1) (+ acc i)))))
+
+(defn fatorial [n]
+  (loop [i n acc 1]
+    (if (= i 0)
+      acc
+      (recur (- i 1) (* acc i)))))
+
+(defn iota [n]
+  (loop [i n acc '()]
+    (if (= i 0)
+      acc
+      (recur (- i 1) (cons i acc)))))
+
 ; --- saída ---
 (println "=== showcase risp ===")
 (println "pi:" pi)
@@ -77,3 +96,6 @@
 (println "conj set 4:" mais-set)
 (println "empty? []:" (empty? []))
 (println "empty? vetor:" (empty? vetor))
+(println "soma 0..5 com loop:" contagem)
+(println "fatorial 6:" (fatorial 6))
+(println "iota 5:" (iota 5))

@@ -255,6 +255,16 @@ mod tests {
     }
 
     #[test]
+    fn conj_set_normalizes_vector_to_list() {
+        assert!(matches!(run("(conj #{} [1 2])"), Value::Set(s) if matches!(&s[0], Value::List(_))));
+    }
+
+    #[test]
+    fn conj_set_deduplicates_vector_and_list() {
+        assert!(matches!(run("(conj #{'(1 2)} [1 2])"), Value::Set(s) if s.len() == 1));
+    }
+
+    #[test]
     fn conj_map_with_pair() {
         assert!(matches!(run("(conj {:a 1} [:b 2])"), Value::Map(m) if m.len() == 2));
     }

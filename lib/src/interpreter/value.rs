@@ -1,11 +1,28 @@
 use crate::collections::RispList;
 use crate::lexer::Span;
-use crate::sema::AstNode;
+use crate::sema::{AstNode, FnArity};
 use std::{cell::RefCell, rc::Rc};
 
 use super::env::Env;
 
 type BuiltinFn = fn(&[(Value, Span)], Span) -> Result<Value, RuntimeError>;
+
+#[derive(Clone)]
+pub struct ClosureArity {
+    pub params: Vec<u32>,
+    pub variadic: Option<u32>,
+    pub body: Rc<AstNode>,
+}
+
+impl From<&FnArity> for ClosureArity {
+    fn from(a: &FnArity) -> Self {
+        Self {
+            params: a.params.clone(),
+            variadic: a.variadic,
+            body: a.body.clone(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -38,13 +55,19 @@ pub enum RuntimeError {
     DivisionByZero(Span),
     ParseError(String),
     AnalyzeError(String),
+    RecurOutsideLoop { span: Span },
+}
+
+#[derive(Clone)]
+pub enum EvalFlow {
+    Value(Value),
+    Recur(Vec<Value>),
 }
 
 #[derive(Clone)]
 pub enum Callable {
     Closure {
-        params: Vec<u32>,
-        body: Rc<AstNode>,
+        arities: Vec<ClosureArity>,
         env: Rc<RefCell<Env>>,
     },
     Builtin {
@@ -81,6 +104,9 @@ impl PartialEq for Value {
             (Value::Symbol(a), Value::Symbol(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Vector(a), Value::Vector(b)) => a == b,
+            (Value::List(l), Value::Vector(v)) | (Value::Vector(v), Value::List(l)) => {
+                l.len() == v.len() && l.iter().zip(v.iter()).all(|(x, y)| x == y)
+            }
             (Value::Set(a), Value::Set(b)) => a == b,
             (Value::Map(a), Value::Map(b)) => a == b,
             // Callables are never equal
@@ -135,6 +161,7 @@ impl std::fmt::Display for RuntimeError {
                 f,
                 "(index-out-of-bounds\n  (max-index {max_accessible})\n  (got {got}))",
             ),
+            RuntimeError::RecurOutsideLoop { .. } => write!(f, "(recur-outside-loop)"),
         }
     }
 }

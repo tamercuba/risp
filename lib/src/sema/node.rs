@@ -50,6 +50,13 @@ impl AstNode {
 }
 
 #[derive(Debug, Clone)]
+pub struct FnArity {
+    pub params: Vec<u32>,
+    pub variadic: Option<u32>,
+    pub body: Rc<AstNode>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Node {
     Long(i64),
     Double(f64),
@@ -70,8 +77,7 @@ pub enum Node {
         body: Box<AstNode>,
     },
     Fn {
-        params: Vec<u32>,
-        body: Rc<AstNode>,
+        arities: Vec<FnArity>,
     },
     Call {
         callee: Box<AstNode>,
@@ -83,6 +89,12 @@ pub enum Node {
         _else: Option<Box<AstNode>>,
     },
     Do(Vec<AstNode>),
+
+    Loop {
+        bindings: Vec<(u32, AstNode)>,
+        body: Box<AstNode>,
+    },
+    Recur(Vec<AstNode>),
 
     List(Vec<AstNode>),
     Vector(Vec<AstNode>),

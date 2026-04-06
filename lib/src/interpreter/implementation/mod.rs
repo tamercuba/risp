@@ -2,6 +2,7 @@ mod eval_call;
 mod eval_forms;
 mod eval_hof;
 mod eval_literals;
+mod eval_loop;
 
 use super::builtins::builtins;
 pub use crate::interpreter::{Callable, Env, RuntimeError, Value};
@@ -75,6 +76,8 @@ impl Interpreter {
             Node::Map(pairs) => self.eval_map_literal(pairs),
             Node::Set(elems) => self.eval_set_literal(elems),
             Node::Symbol(s) => Ok(Value::Symbol(s.clone())),
+            Node::Loop { bindings, body } => self.eval_loop(bindings, body),
+            Node::Recur(_) => Err(RuntimeError::RecurOutsideLoop { span: node.span }),
         }
     }
 }
