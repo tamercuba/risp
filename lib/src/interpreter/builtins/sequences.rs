@@ -1,7 +1,6 @@
 use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
-//(cons 0 '(1 2))
 //(concat [1 2] [3 4])
 //(seq [])
 
@@ -275,6 +274,37 @@ fn empty(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     }
 }
 
+fn cons(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
+    if elems.len() != 2 {
+        return Err(RuntimeError::WrongArity {
+            expected: 2,
+            got: elems.len(),
+            span,
+        });
+    }
+
+    let (value, _) = elems.first().unwrap().clone();
+    let (col, col_span) = elems[1].clone();
+
+    match (value.clone(), col) {
+        (_, Value::List(c)) | (_, Value::Vector(c)) | (_, Value::Set(c)) => {
+            Ok(Value::List(std::iter::once(value).chain(c).collect()))
+        }
+        (_, Value::Map(m)) => {
+            let map_col = m
+                .iter()
+                .map(|(k, v)| Value::Vector(vec![k.clone(), v.clone()]))
+                .collect::<Vec<Value>>();
+            Ok(Value::List(std::iter::once(value).chain(map_col).collect()))
+        }
+        (_, v) => Err(RuntimeError::TypeError {
+            expected: "collection",
+            got: v.type_name(),
+            span: col_span,
+        }),
+    }
+}
+
 pub fn builtins() -> Vec<(&'static str, Value)> {
     vec![
         ("count", Value::new_builtin("count", count)),
@@ -285,5 +315,6 @@ pub fn builtins() -> Vec<(&'static str, Value)> {
         ("nth", Value::new_builtin("nth", nth)),
         ("conj", Value::new_builtin("conj", conj)),
         ("empty?", Value::new_builtin("empty?", empty)),
+        ("cons", Value::new_builtin("cons", cons)),
     ]
 }
