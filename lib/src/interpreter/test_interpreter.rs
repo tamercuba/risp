@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::interpreter::{Interpreter, Value};
     use crate::interpreter::value::RuntimeError;
+    use crate::interpreter::{Interpreter, Value};
 
     fn run(source: &str) -> Value {
         Interpreter::new(false).run(source).unwrap()
@@ -236,20 +236,12 @@ mod tests {
 
     #[test]
     fn eval_closure_captures_outer_env() {
-        assert!(matches!(
-            run("(let [n 5] ((fn [] n)))"),
-            Value::Long(5)
-        ));
+        assert!(matches!(run("(let [n 5] ((fn [] n)))"), Value::Long(5)));
     }
-
-    // --- multi-arity ---
 
     #[test]
     fn eval_multi_arity_dispatch_zero() {
-        assert!(matches!(
-            run("(defn f ([] 0) ([x] x)) (f)"),
-            Value::Long(0)
-        ));
+        assert!(matches!(run("(defn f ([] 0) ([x] x)) (f)"), Value::Long(0)));
     }
 
     #[test]
@@ -283,8 +275,6 @@ mod tests {
             Value::Long(13)
         ));
     }
-
-    // --- loop / recur ---
 
     #[test]
     fn eval_loop_simple_counter() {
@@ -327,9 +317,27 @@ mod tests {
 
     #[test]
     fn eval_loop_body_is_value_no_recur() {
+        assert!(matches!(run("(loop [x 7] x)"), Value::Long(7)));
+    }
+
+    #[test]
+    fn eval_loop_recur_inside_do() {
         assert!(matches!(
-            run("(loop [x 7] x)"),
-            Value::Long(7)
+            run_with_builtins(
+                "(loop [i 0 acc 0]
+                   (do
+                     (if (= i 3)
+                       acc
+                       (recur (+ i 1) (+ acc i)))))"
+            ),
+            Value::Long(3)
         ));
+    }
+
+    #[test]
+    fn eval_loop_body_error_propagates() {
+        let mut interp = Interpreter::new(true);
+        let result = interp.run("(loop [i 0] (+ i \"bad\"))");
+        assert!(matches!(result, Err(RuntimeError::TypeError { .. })));
     }
 }

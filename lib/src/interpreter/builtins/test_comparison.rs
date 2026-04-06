@@ -11,8 +11,6 @@ mod tests {
         Interpreter::new(true).run(source).unwrap_err()
     }
 
-    // --- igualdade simples ---
-
     #[test]
     fn eq_equal_longs() {
         assert!(matches!(run("(= 1 1)"), Value::Bool(true)));
@@ -43,8 +41,6 @@ mod tests {
         assert!(matches!(run("(= true true)"), Value::Bool(true)));
     }
 
-    // --- múltiplos argumentos ---
-
     #[test]
     fn eq_multiple_all_equal() {
         assert!(matches!(run("(= 1 1 1)"), Value::Bool(true)));
@@ -54,8 +50,6 @@ mod tests {
     fn eq_multiple_last_differs() {
         assert!(matches!(run("(= 1 1 2)"), Value::Bool(false)));
     }
-
-    // --- igualdade cross-type entre seqs ---
 
     #[test]
     fn eq_list_and_vector_equal() {
@@ -82,8 +76,6 @@ mod tests {
         assert!(matches!(run("(= '() [])"), Value::Bool(true)));
     }
 
-    // --- Set e Map não são seqs ---
-
     #[test]
     fn eq_set_not_equal_to_list() {
         assert!(matches!(run("(= #{1 2} '(1 2))"), Value::Bool(false)));
@@ -99,8 +91,6 @@ mod tests {
         assert!(matches!(run("(= {:a 1} {:a 1})"), Value::Bool(true)));
     }
 
-    // --- aridade ---
-
     #[test]
     fn eq_one_arg_returns_true() {
         assert!(matches!(run("(= 1)"), Value::Bool(true)));
@@ -113,8 +103,6 @@ mod tests {
             RuntimeError::WrongArity { expected: 1, .. }
         ));
     }
-
-    // --- not= ---
 
     #[test]
     fn neq_different() {
@@ -135,8 +123,6 @@ mod tests {
     fn neq_multiple_one_differs() {
         assert!(matches!(run("(not= 1 1 2)"), Value::Bool(true)));
     }
-
-    // --- > ---
 
     #[test]
     fn gt_true() {
@@ -187,5 +173,127 @@ mod tests {
             run_err(r#"(> "a" "b")"#),
             RuntimeError::TypeError { .. }
         ));
+    }
+
+    #[test]
+    fn gt_double_vs_long() {
+        assert!(matches!(run("(> 3.5 2)"), Value::Bool(true)));
+        assert!(matches!(run("(> 1.5 2)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn gt_double_vs_double() {
+        assert!(matches!(run("(> 2.5 1.5)"), Value::Bool(true)));
+        assert!(matches!(run("(> 1.5 2.5)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn lt_true() {
+        assert!(matches!(run("(< 1 2)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn lt_false() {
+        assert!(matches!(run("(< 2 1)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn lt_equal_is_false() {
+        assert!(matches!(run("(< 3 3)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn lt_chain_true() {
+        assert!(matches!(run("(< 1 2 3)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn lt_chain_false() {
+        assert!(matches!(run("(< 1 3 2)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn lt_single_arg_returns_true() {
+        assert!(matches!(run("(< 5)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn lt_wrong_arity_zero_args() {
+        assert!(matches!(run_err("(<)"), RuntimeError::WrongArity { .. }));
+    }
+
+    #[test]
+    fn lt_type_error_on_string() {
+        assert!(matches!(
+            run_err(r#"(< "a" "b")"#),
+            RuntimeError::TypeError { .. }
+        ));
+    }
+
+    #[test]
+    fn lt_long_and_double() {
+        assert!(matches!(run("(< 1 1.5)"), Value::Bool(true)));
+        assert!(matches!(run("(< 1.5 1)"), Value::Bool(false)));
+    }
+
+    // le
+    #[test]
+    fn le_true() {
+        assert!(matches!(run("(<= 1 2)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn le_equal_is_true() {
+        assert!(matches!(run("(<= 3 3)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn le_false() {
+        assert!(matches!(run("(<= 3 2)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn le_chain_true() {
+        assert!(matches!(run("(<= 1 2 2 3)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn le_single_arg_returns_true() {
+        assert!(matches!(run("(<= 5)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn le_wrong_arity_zero_args() {
+        assert!(matches!(run_err("(<=)"), RuntimeError::WrongArity { .. }));
+    }
+
+    #[test]
+    fn ge_true() {
+        assert!(matches!(run("(>= 2 1)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn ge_equal_is_true() {
+        assert!(matches!(run("(>= 3 3)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn ge_false() {
+        assert!(matches!(run("(>= 1 2)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn ge_chain_true() {
+        assert!(matches!(run("(>= 3 2 2 1)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn ge_single_arg_returns_true() {
+        assert!(matches!(run("(>= 5)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn ge_wrong_arity_zero_args() {
+        assert!(matches!(run_err("(>=)"), RuntimeError::WrongArity { .. }));
     }
 }

@@ -84,7 +84,6 @@ mod tests {
 
     #[test]
     fn let_sequential_bindings() {
-        // b's value references a — a must be resolved as Var, not GlobalVar
         let result = parse("(let [a 1 b a] b)");
         let bindings = match &result[0].node {
             Node::Let { bindings, .. } => bindings,
@@ -371,8 +370,6 @@ mod tests {
         assert!(matches!(err, AnalyzeError::InvalidExpression(_)));
     }
 
-    // --- multi-arity / varargs ---
-
     #[test]
     fn analyzes_fn_multi_arity() {
         let result = parse("(fn ([] 0) ([x] x))");
@@ -429,7 +426,23 @@ mod tests {
         assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
     }
 
-    // --- loop / recur ---
+    #[test]
+    fn error_fn_varargs_non_symbol_rest_name() {
+        let err = parse_err("(fn [a & 1] a)");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_multi_arity_malformed_element() {
+        let err = parse_err("(fn ([] 0) bad)");
+        assert!(matches!(err, AnalyzeError::InvalidFnParams(_)));
+    }
+
+    #[test]
+    fn error_fn_no_args() {
+        let err = parse_err("(fn)");
+        assert!(matches!(err, AnalyzeError::InvalidArity { form: "fn", .. }));
+    }
 
     #[test]
     fn analyzes_loop() {
@@ -465,7 +478,10 @@ mod tests {
     #[test]
     fn error_loop_wrong_arity() {
         let err = parse_err("(loop [i 0])");
-        assert!(matches!(err, AnalyzeError::InvalidArity { form: "loop", .. }));
+        assert!(matches!(
+            err,
+            AnalyzeError::InvalidArity { form: "loop", .. }
+        ));
     }
 
     #[test]
