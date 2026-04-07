@@ -2,6 +2,7 @@ mod eval_call;
 mod eval_forms;
 mod eval_hof;
 mod eval_literals;
+mod eval_logic;
 mod eval_loop;
 
 use super::builtins::builtins;
@@ -12,6 +13,8 @@ use crate::sema::{analyze, AstNode, Node};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+const SRC_STDLIB_CORE: &str = include_str!("../stdlib/src/core.risp");
+
 pub struct Interpreter {
     pub(super) env: Rc<RefCell<Env>>,
 }
@@ -20,23 +23,30 @@ impl Interpreter {
     pub fn new(load_builtins: bool) -> Self {
         let env = Rc::new(RefCell::new(Env::default()));
         if load_builtins {
-            Self::load_builtins(env.clone());
+            let e = env.borrow();
+            e.load_builtins("risp.core", builtins());
+            e.create_ns("user", vec!["risp.core"]);
         }
-        Self { env }
+        let mut interp = Self { env };
+        if load_builtins {
+            interp
+                .run_in_ns(SRC_STDLIB_CORE, "risp.core")
+                .expect("core.risp failed to load");
+        }
+        interp
     }
 
-    fn load_builtins(env: Rc<RefCell<Env>>) -> Option<()> {
-        for (name, value) in builtins() {
-            env.borrow_mut().set_global(name, value);
-        }
-        None
+    fn run_in_ns(&mut self, source: &str, ns: &str) -> Result<Value, RuntimeError> {
+        let current_ns = self.env.borrow().get_current_namespace();
+        self.env.borrow().set_current_namespace(ns);
+        let result = self.run(source);
+        self.env.borrow().set_current_namespace(&current_ns);
+        result
     }
 
     pub fn completions(&self) -> Vec<String> {
         let builtins = self.env.borrow().global_names();
-        let special_forms = [
-            "if", "let", "fn", "def", "defn", "do", "apply", "map", "filter", "reduce",
-        ];
+        let special_forms = ["if", "let", "fn", "def", "defn", "do", "apply"];
         special_forms
             .iter()
             .map(|s| s.to_string())
@@ -65,6 +75,7 @@ impl Interpreter {
             Node::Keyword(s) => Ok(Value::Keyword(s.clone())),
             Node::Var(id) => self.eval_var(*id, node.span),
             Node::GlobalVar(name) => self.eval_global_var(name, node.span),
+            Node::And(_) | Node::Or(_) => self.eval_logic(node),
             Node::If { .. } => self.eval_if(node),
             Node::Let { .. } => self.eval_let(node),
             Node::Fn { .. } => self.eval_fn(node),

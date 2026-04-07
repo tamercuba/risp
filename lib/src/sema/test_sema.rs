@@ -510,4 +510,43 @@ mod tests {
             _ => panic!("expected Recur"),
         }
     }
+
+    #[test]
+    fn analyzes_and_empty() {
+        let result = parse("(and)");
+        assert!(matches!(result[0].node, Node::And(ref args) if args.is_empty()));
+    }
+
+    #[test]
+    fn analyzes_and_with_args() {
+        let result = parse("(and 1 2 3)");
+        match &result[0].node {
+            Node::And(args) => assert_eq!(args.len(), 3),
+            _ => panic!("expected And"),
+        }
+    }
+
+    #[test]
+    fn analyzes_or_empty() {
+        let result = parse("(or)");
+        assert!(matches!(result[0].node, Node::Or(ref args) if args.is_empty()));
+    }
+
+    #[test]
+    fn analyzes_or_with_args() {
+        let result = parse("(or 1 2)");
+        match &result[0].node {
+            Node::Or(args) => assert_eq!(args.len(), 2),
+            _ => panic!("expected Or"),
+        }
+    }
+
+    #[test]
+    fn analyzes_and_args_are_analyzed() {
+        let result = parse("(and foo)");
+        match &result[0].node {
+            Node::And(args) => assert!(matches!(args[0].node, Node::GlobalVar(_))),
+            _ => panic!("expected And"),
+        }
+    }
 }

@@ -55,7 +55,9 @@ pub enum RuntimeError {
     DivisionByZero(Span),
     ParseError(String),
     AnalyzeError(String),
-    RecurOutsideLoop { span: Span },
+    RecurOutsideLoop {
+        span: Span,
+    },
 }
 
 #[derive(Clone)]
@@ -232,5 +234,9 @@ impl Value {
 
     pub fn new_builtin(name: &'static str, func: BuiltinFn) -> Value {
         Value::Callable(Rc::new(Callable::Builtin { name, func }))
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        !matches!(self, Value::Nil | Value::Bool(false))
     }
 }
