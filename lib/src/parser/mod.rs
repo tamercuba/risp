@@ -128,6 +128,17 @@ impl Parser {
             "true" => ExprKind::Bool(true),
             "false" => ExprKind::Bool(false),
             "nil" => ExprKind::Nil,
+            s if s.contains('/') && !s.starts_with('/') => {
+                let (ns, name) = s.split_once('/').unwrap();
+                if name.is_empty() || name.contains('/') {
+                    ExprKind::Symbol(c.content)
+                } else {
+                    ExprKind::QualifiedSymbol {
+                        ns: ns.to_string(),
+                        name: name.to_string(),
+                    }
+                }
+            }
             _ => ExprKind::Symbol(c.content),
         };
         self.push_to_frame(kind, c.span)

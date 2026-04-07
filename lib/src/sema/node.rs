@@ -67,6 +67,10 @@ pub enum Node {
 
     Var(u32),
     GlobalVar(String),
+    QualifiedVar {
+        ns: String,
+        name: String,
+    },
 
     And(Vec<AstNode>),
     Or(Vec<AstNode>),

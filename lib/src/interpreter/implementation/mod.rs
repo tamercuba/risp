@@ -75,6 +75,7 @@ impl Interpreter {
             Node::Keyword(s) => Ok(Value::Keyword(s.clone())),
             Node::Var(id) => self.eval_var(*id, node.span),
             Node::GlobalVar(name) => self.eval_global_var(name, node.span),
+            Node::QualifiedVar { ns, name } => self.eval_qualified_var(ns, name, node.span),
             Node::And(_) | Node::Or(_) => self.eval_logic(node),
             Node::If { .. } => self.eval_if(node),
             Node::Let { .. } => self.eval_let(node),

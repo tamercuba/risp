@@ -43,7 +43,11 @@ pub struct NamespaceRegistry {
 
 impl NamespaceRegistry {
     pub fn get(&self, name: &str) -> Option<Value> {
-        let ns = self.namespaces.get(&self.current)?;
+        self.get_in_ns(&self.current, name)
+    }
+
+    pub fn get_in_ns(&self, ns: &str, name: &str) -> Option<Value> {
+        let ns = self.namespaces.get(ns)?;
         ns.get(name).or_else(|| {
             ns.referred
                 .iter()

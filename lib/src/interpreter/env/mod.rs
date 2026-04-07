@@ -39,6 +39,10 @@ impl Env {
         current_ns.get(name)
     }
 
+    pub fn get_in_ns(&self, ns: &str, name: &str) -> Option<Value> {
+        self.registry.borrow().get_in_ns(ns, name)
+    }
+
     pub fn global_names(&self) -> Vec<String> {
         self.registry.borrow().global_names()
     }

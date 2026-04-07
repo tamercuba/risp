@@ -431,4 +431,38 @@ mod tests {
             Value::Keyword(s) if s == "yes"
         ));
     }
+
+    #[test]
+    fn eval_qualified_var_in_current_ns() {
+        assert!(matches!(run("(def x 42) user/x"), Value::Long(42)));
+    }
+
+    #[test]
+    fn eval_qualified_var_builtin() {
+        assert!(matches!(run_with_builtins("(risp.core/+ 1 2)"), Value::Long(3)));
+    }
+
+    #[test]
+    fn eval_qualified_var_call() {
+        assert!(matches!(
+            run_with_builtins("(risp.core/map (fn [x] (* x 2)) [1 2 3])"),
+            Value::Vector(v) if v.len() == 3
+        ));
+    }
+
+    #[test]
+    fn eval_qualified_var_undefined_ns() {
+        assert!(matches!(
+            run_err("nonexistent/foo"),
+            RuntimeError::UndefinedVariable { .. }
+        ));
+    }
+
+    #[test]
+    fn eval_qualified_var_undefined_name() {
+        assert!(matches!(
+            run_err("user/does-not-exist"),
+            RuntimeError::UndefinedVariable { .. }
+        ));
+    }
 }
