@@ -68,6 +68,9 @@ pub enum Node {
     Var(u32),
     GlobalVar(String),
 
+    And(Vec<AstNode>),
+    Or(Vec<AstNode>),
+
     Def {
         name: String,
         value: Box<AstNode>,

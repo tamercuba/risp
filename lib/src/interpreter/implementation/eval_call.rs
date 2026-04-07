@@ -67,12 +67,8 @@ impl Interpreter {
         match &node.node {
             Node::Call { callee, args } => {
                 if let Node::GlobalVar(name) = &callee.node {
-                    match name.as_str() {
-                        "apply" => return self.eval_apply(args, node.span),
-                        "map" => return self.eval_map_hof(args, node.span),
-                        "filter" => return self.eval_filter(args, node.span),
-                        "reduce" => return self.eval_reduce(args, node.span),
-                        _ => {}
+                    if name == "apply" {
+                        return self.eval_apply(args, node.span);
                     }
                 }
 

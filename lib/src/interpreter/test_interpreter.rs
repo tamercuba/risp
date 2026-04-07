@@ -340,4 +340,95 @@ mod tests {
         let result = interp.run("(loop [i 0] (+ i \"bad\"))");
         assert!(matches!(result, Err(RuntimeError::TypeError { .. })));
     }
+
+    #[test]
+    fn eval_and_empty_returns_true() {
+        assert!(matches!(run("(and)"), Value::Bool(true)));
+    }
+
+    #[test]
+    fn eval_and_all_truthy_returns_last() {
+        assert!(matches!(run("(and 1 2 3)"), Value::Long(3)));
+    }
+
+    #[test]
+    fn eval_and_single_truthy() {
+        assert!(matches!(run("(and 42)"), Value::Long(42)));
+    }
+
+    #[test]
+    fn eval_and_single_falsy() {
+        assert!(matches!(run("(and false)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn eval_and_short_circuits_on_false() {
+        assert!(matches!(run("(and false undefined-var)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn eval_and_short_circuits_on_nil() {
+        assert!(matches!(run("(and nil undefined-var)"), Value::Nil));
+    }
+
+    #[test]
+    fn eval_and_returns_first_falsy_in_middle() {
+        assert!(matches!(run("(and 1 false 3)"), Value::Bool(false)));
+    }
+
+    #[test]
+    fn eval_and_nil_is_falsy() {
+        assert!(matches!(run("(and 1 nil 3)"), Value::Nil));
+    }
+
+    #[test]
+    fn eval_or_empty_returns_nil() {
+        assert!(matches!(run("(or)"), Value::Nil));
+    }
+
+    #[test]
+    fn eval_or_first_truthy_returned() {
+        assert!(matches!(run("(or 1 2 3)"), Value::Long(1)));
+    }
+
+    #[test]
+    fn eval_or_single_truthy() {
+        assert!(matches!(run("(or 42)"), Value::Long(42)));
+    }
+
+    #[test]
+    fn eval_or_single_falsy_returns_nil() {
+        assert!(matches!(run("(or false)"), Value::Nil));
+    }
+
+    #[test]
+    fn eval_or_short_circuits_on_truthy() {
+        assert!(matches!(run("(or 1 undefined-var)"), Value::Long(1)));
+    }
+
+    #[test]
+    fn eval_or_skips_falsy_finds_truthy() {
+        assert!(matches!(run("(or nil false 3)"), Value::Long(3)));
+    }
+
+    #[test]
+    fn eval_or_all_falsy_returns_nil() {
+        assert!(matches!(run("(or nil false)"), Value::Nil));
+    }
+
+    #[test]
+    fn eval_and_in_if_condition() {
+        assert!(matches!(
+            run_with_builtins("(if (and (> 5 3) (< 1 2)) :yes :no)"),
+            Value::Keyword(s) if s == "yes"
+        ));
+    }
+
+    #[test]
+    fn eval_or_in_if_condition() {
+        assert!(matches!(
+            run_with_builtins("(if (or false (= 1 1)) :yes :no)"),
+            Value::Keyword(s) if s == "yes"
+        ));
+    }
 }

@@ -1,4 +1,4 @@
-; showcase.clj — demonstração das features implementadas
+; showcase.risp — demonstração das features implementadas
 
 ; --- tipos básicos ---
 (def pi 3.14159)
@@ -74,6 +74,19 @@
       acc
       (recur (- i 1) (cons i acc)))))
 
+; --- and / or ---
+(def adulto-ativo (and (:ativo pessoa) (>= (:idade pessoa) 18)))
+(def tem-nome-ou-apelido (or (:nome pessoa) (:apelido pessoa)))
+
+(defn classificar [n]
+  (if (and (> n 0) (< n 10))
+    :pequeno
+    (if (and (>= n 10) (< n 100))
+      :medio
+      (if (or (= n 0) (< n 0))
+        :zero-ou-negativo
+        :grande))))
+
 ; --- saída ---
 (println "=== showcase risp ===")
 (println "pi:" pi)
@@ -99,3 +112,9 @@
 (println "soma 0..5 com loop:" contagem)
 (println "fatorial 6:" (fatorial 6))
 (println "iota 5:" (iota 5))
+(println "adulto-ativo:" adulto-ativo)
+(println "tem-nome-ou-apelido:" tem-nome-ou-apelido)
+(println "classifica 5:" (classificar 5))
+(println "classifica 42:" (classificar 42))
+(println "classifica 200:" (classificar 200))
+(println "classifica -1:" (classificar -1))

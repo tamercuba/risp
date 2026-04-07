@@ -1,0 +1,53 @@
+(defn list [& args] args)
+
+(defn not [x] (if x false true))
+(defn nil? [x] (= x nil))
+(defn zero? [x] (= x 0))
+(defn pos? [x] (> x 0))
+(defn neg? [x] (< x 0))
+(defn even? [x] (= (mod x 2) 0))
+(defn odd? [x] (not (even? x)))
+
+(defn map [f coll]
+  (loop [remaining coll
+         result    []]
+    (if (empty? remaining)
+      result
+      (recur (rest remaining)
+             (conj result (f (first remaining)))))))
+
+(defn filter [f coll]
+  (apply list
+    (loop [remaining coll
+           result    []] (if (empty? remaining) result
+        (let [x (first remaining)]
+          (if (f x)
+            (recur (rest remaining) (conj result x))
+            (recur (rest remaining) result)))))))
+
+(defn reduce
+  ([f coll]
+   (reduce f (first coll) (rest coll)))
+  ([f init coll]
+   (loop [remaining coll
+          acc       init]
+     (if (empty? remaining)
+       acc
+       (recur (rest remaining) (f acc (first remaining)))))))
+
+(defn some [f coll]
+  (loop [remaining coll]
+    (if (empty? remaining)
+      nil
+      (let [result (f (first remaining))]
+        (if result
+          result
+          (recur (rest remaining)))))))
+
+(defn every? [f coll]
+  (loop [remaining coll]
+    (if (empty? remaining)
+      true
+      (if (f (first remaining))
+        (recur (rest remaining))
+        false))))

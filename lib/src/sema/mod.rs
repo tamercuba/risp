@@ -94,8 +94,24 @@ fn analyze_list(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, 
         Some(head) if is_symbol(head, "do") => analyze_do(elems, span, scope),
         Some(head) if is_symbol(head, "loop") => analyze_loop(elems, span, scope),
         Some(head) if is_symbol(head, "recur") => analyze_recur(elems, span, scope),
+        Some(head) if is_symbol(head, "and") => analyze_and(elems, span, scope),
+        Some(head) if is_symbol(head, "or") => analyze_or(elems, span, scope),
         _ => analyze_call(elems, span, scope),
     }
+}
+fn analyze_and(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    let args = elems[1..]
+        .iter()
+        .map(|e| analyze_expr(e.clone(), scope))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(AstNode::new(Node::And(args), span))
+}
+fn analyze_or(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
+    let args = elems[1..]
+        .iter()
+        .map(|e| analyze_expr(e.clone(), scope))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(AstNode::new(Node::Or(args), span))
 }
 
 fn analyze_do(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
