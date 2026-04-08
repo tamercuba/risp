@@ -19,6 +19,12 @@ pub struct Interpreter {
     pub(super) env: Rc<RefCell<Env>>,
 }
 
+impl Default for Interpreter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Interpreter {
     pub fn new() -> Self {
         let env = Rc::new(RefCell::new(Env::default()));
@@ -70,8 +76,8 @@ impl Interpreter {
             Node::Double(n) => Ok(Value::Double(*n)),
             Node::Bool(b) => Ok(Value::Bool(*b)),
             Node::Nil => Ok(Value::Nil),
-            Node::String(s) => Ok(Value::String(s.clone())),
-            Node::Keyword(s) => Ok(Value::Keyword(s.clone())),
+            Node::String(s) => Ok(Value::String(Rc::from(s.as_str()))),
+            Node::Keyword(s) => Ok(Value::Keyword(Rc::from(s.as_str()))),
             Node::Var(id) => self.eval_var(*id, node.span),
             Node::GlobalVar(name) => self.eval_global_var(name, node.span),
             Node::QualifiedVar { ns, name } => self.eval_qualified_var(ns, name, node.span),
@@ -86,7 +92,7 @@ impl Interpreter {
             Node::Vector(elems) => self.eval_vector_literal(elems),
             Node::Map(pairs) => self.eval_map_literal(pairs),
             Node::Set(elems) => self.eval_set_literal(elems),
-            Node::Symbol(s) => Ok(Value::Symbol(s.clone())),
+            Node::Symbol(s) => Ok(Value::Symbol(Rc::from(s.as_str()))),
             Node::Loop { bindings, body } => self.eval_loop(bindings, body),
             Node::Recur(_) => Err(RuntimeError::RecurOutsideLoop { span: node.span }),
         }

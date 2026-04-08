@@ -101,13 +101,13 @@ pub enum Value {
     Bool(bool),
     Long(i64),
     Double(f64),
-    String(String),
-    Keyword(String),
+    String(Rc<str>),
+    Keyword(Rc<str>),
     List(RispList<Value>),
     Vector(Vec<Value>),
     Map(Vec<(Value, Value)>),
     Set(Vec<Value>),
-    Symbol(String),
+    Symbol(Rc<str>),
     Callable(Rc<Callable>),
 }
 

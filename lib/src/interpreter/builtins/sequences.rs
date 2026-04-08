@@ -319,7 +319,7 @@ fn cons(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     let (col, col_span) = &elems[1];
 
     match (value, col) {
-        (_, Value::List(c)) => Ok(Value::List(RispList::cons(value.clone(), &c))),
+        (_, Value::List(c)) => Ok(Value::List(RispList::cons(value.clone(), c))),
         (_, Value::Vector(c)) | (_, Value::Set(c)) => Ok(Value::List(
             std::iter::once(value.clone()).chain(c.clone()).collect(),
         )),
