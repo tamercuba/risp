@@ -1,10 +1,12 @@
+use std::rc::Rc;
+
 use crate::collections::RispList;
 use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
 fn seq_to_list(v: Value) -> Value {
     match v {
-        Value::Vector(vec) => Value::List(vec.into_iter().collect()),
+        Value::Vector(vec) => Value::List(vec.iter().cloned().collect()),
         other => other,
     }
 }
@@ -44,7 +46,7 @@ fn first(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
                 None => Ok(Value::Nil),
             },
             (Value::Map(m), _) => match m.first() {
-                Some(f) => Ok(Value::Vector(vec![f.0.clone(), f.1.clone()])),
+                Some(f) => Ok(Value::Vector(Rc::new(vec![f.0.clone(), f.1.clone()]))),
                 None => Ok(Value::Nil),
             },
             (value, span) => Err(RuntimeError::TypeError {
@@ -91,7 +93,7 @@ fn rest(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
             if !m.is_empty() {
                 let result = m[1..]
                     .iter()
-                    .map(|(k, v)| Value::Vector(vec![k.clone(), v.clone()]))
+                    .map(|(k, v)| Value::Vector(Rc::new(vec![k.clone(), v.clone()])))
                     .collect::<RispList<Value>>();
                 Ok(Value::List(result))
             } else {
@@ -134,7 +136,7 @@ fn second(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
                 Ok(Value::Nil)
             } else {
                 let (k, v) = m[2].clone();
-                Ok(Value::Vector(vec![k, v]))
+                Ok(Value::Vector(Rc::new(vec![k, v])))
             }
         }
         (v, s) => Err(RuntimeError::TypeError {
@@ -157,7 +159,7 @@ fn last(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
                 None => Ok(Value::Nil),
             },
             (Value::Map(m), _) => match m.last() {
-                Some(f) => Ok(Value::Vector(vec![f.0.clone(), f.1.clone()])),
+                Some(f) => Ok(Value::Vector(Rc::new(vec![f.0.clone(), f.1.clone()]))),
                 None => Ok(Value::Nil),
             },
             (value, span) => Err(RuntimeError::TypeError {
@@ -235,32 +237,35 @@ fn conj(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
 
     match col {
         Value::Vector(v) => {
-            let mut result = v.clone();
-            result.push(val.clone());
-            Ok(Value::Vector(result))
+            let result: Vec<Value> = v
+                .iter()
+                .cloned()
+                .chain(std::iter::once(val.clone()))
+                .collect();
+            Ok(Value::Vector(Rc::new(result)))
         }
         Value::List(l) => Ok(Value::List(RispList::cons(val.clone(), l))),
         Value::Set(s) => {
             let val = seq_to_list(val.clone());
-            let mut result = s.clone();
+            let mut result: Vec<Value> = s.iter().cloned().collect();
             if !result.contains(&val) {
                 result.push(val);
             }
-            Ok(Value::Set(result))
+            Ok(Value::Set(Rc::new(result)))
         }
         Value::Map(m) => {
             let pair = match val {
                 Value::Vector(v) if v.len() == 2 => Ok((v[0].clone(), v[1].clone())),
                 Value::Map(other) => {
-                    let mut result = m.clone();
-                    for (k, v) in other {
+                    let mut result: Vec<(Value, Value)> = m.iter().cloned().collect();
+                    for (k, v) in other.iter() {
                         if let Some(entry) = result.iter_mut().find(|(ek, _)| ek == k) {
                             entry.1 = v.clone();
                         } else {
                             result.push((k.clone(), v.clone()));
                         }
                     }
-                    return Ok(Value::Map(result));
+                    return Ok(Value::Map(Rc::new(result)));
                 }
                 v => Err(RuntimeError::TypeError {
                     expected: "vector pair or map",
@@ -269,13 +274,13 @@ fn conj(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
                 }),
             }?;
 
-            let mut result = m.clone();
+            let mut result: Vec<(Value, Value)> = m.iter().cloned().collect();
             if let Some(entry) = result.iter_mut().find(|(k, _)| k == &pair.0) {
                 entry.1 = pair.1;
             } else {
                 result.push(pair);
             }
-            Ok(Value::Map(result))
+            Ok(Value::Map(Rc::new(result)))
         }
         v => Err(RuntimeError::TypeError {
             expected: "seq",
@@ -319,14 +324,16 @@ fn cons(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
     let (col, col_span) = &elems[1];
 
     match (value, col) {
-        (_, Value::List(c)) => Ok(Value::List(RispList::cons(value.clone(), &c))),
+        (_, Value::List(c)) => Ok(Value::List(RispList::cons(value.clone(), c))),
         (_, Value::Vector(c)) | (_, Value::Set(c)) => Ok(Value::List(
-            std::iter::once(value.clone()).chain(c.clone()).collect(),
+            std::iter::once(value.clone())
+                .chain(c.iter().cloned())
+                .collect(),
         )),
         (_, Value::Map(m)) => {
             let map_col = m
                 .iter()
-                .map(|(k, v)| Value::Vector(vec![k.clone(), v.clone()]))
+                .map(|(k, v)| Value::Vector(Rc::new(vec![k.clone(), v.clone()])))
                 .collect::<Vec<Value>>();
             Ok(Value::List(
                 std::iter::once(value.clone()).chain(map_col).collect(),

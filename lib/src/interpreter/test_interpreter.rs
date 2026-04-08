@@ -47,12 +47,12 @@ mod tests {
 
     #[test]
     fn eval_string() {
-        assert!(matches!(run("\"hello\""), Value::String(s) if s == "hello"));
+        assert!(matches!(run("\"hello\""), Value::String(s) if s.as_ref() == "hello"));
     }
 
     #[test]
     fn eval_keyword() {
-        assert!(matches!(run(":foo"), Value::Keyword(s) if s == "foo"));
+        assert!(matches!(run(":foo"), Value::Keyword(s) if s.as_ref() == "foo"));
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
 
     #[test]
     fn eval_quoted_symbol() {
-        assert!(matches!(run("'foo"), Value::Symbol(s) if s == "foo"));
+        assert!(matches!(run("'foo"), Value::Symbol(s) if s.as_ref() == "foo"));
     }
 
     #[test]
@@ -420,7 +420,7 @@ mod tests {
     fn eval_and_in_if_condition() {
         assert!(matches!(
             run_with_builtins("(if (and (> 5 3) (< 1 2)) :yes :no)"),
-            Value::Keyword(s) if s == "yes"
+            Value::Keyword(s) if s.as_ref() == "yes"
         ));
     }
 
@@ -428,7 +428,7 @@ mod tests {
     fn eval_or_in_if_condition() {
         assert!(matches!(
             run_with_builtins("(if (or false (= 1 1)) :yes :no)"),
-            Value::Keyword(s) if s == "yes"
+            Value::Keyword(s) if s.as_ref() == "yes"
         ));
     }
 
@@ -470,7 +470,7 @@ mod tests {
     fn eval_defn_sets_closure_name() {
         assert!(matches!(
             run_with_builtins("(defn foo [x] x) (str foo)"),
-            Value::String(s) if s == "#<fn foo>"
+            Value::String(s) if s.as_ref() == "#<fn foo>"
         ));
     }
 
@@ -478,27 +478,27 @@ mod tests {
     fn eval_fn_anonymous_has_no_name() {
         assert!(matches!(
             run_with_builtins("(str (fn [x] x))"),
-            Value::String(s) if s == "#<fn lamba>"
+            Value::String(s) if s.as_ref() == "#<fn lamba>"
         ));
     }
 
     #[test]
     fn eval_string_escape_newline() {
-        assert!(matches!(run("\"a\\nb\""), Value::String(s) if s == "a\nb"));
+        assert!(matches!(run("\"a\\nb\""), Value::String(s) if s.as_ref() == "a\nb"));
     }
 
     #[test]
     fn eval_string_escape_tab() {
-        assert!(matches!(run("\"a\\tb\""), Value::String(s) if s == "a\tb"));
+        assert!(matches!(run("\"a\\tb\""), Value::String(s) if s.as_ref() == "a\tb"));
     }
 
     #[test]
     fn eval_string_escape_double_quote() {
-        assert!(matches!(run("\"a\\\"b\""), Value::String(s) if s == "a\"b"));
+        assert!(matches!(run("\"a\\\"b\""), Value::String(s) if s.as_ref() == "a\"b"));
     }
 
     #[test]
     fn eval_string_escape_backslash() {
-        assert!(matches!(run("\"a\\\\b\""), Value::String(s) if s == "a\\b"));
+        assert!(matches!(run("\"a\\\\b\""), Value::String(s) if s.as_ref() == "a\\b"));
     }
 }

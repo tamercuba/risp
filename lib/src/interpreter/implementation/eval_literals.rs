@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{Interpreter, RuntimeError, Value};
 use crate::collections::RispList;
 use crate::lexer::Span;
@@ -5,7 +7,7 @@ use crate::sema::AstNode;
 
 fn seq_to_list(v: Value) -> Value {
     match v {
-        Value::Vector(vec) => Value::List(vec.into_iter().collect()),
+        Value::Vector(vec) => Value::List(vec.iter().cloned().collect()),
         other => other,
     }
 }
@@ -65,7 +67,7 @@ impl Interpreter {
             .iter()
             .map(|e| self.eval(e))
             .collect::<Result<Vec<_>, _>>()
-            .map(Value::Vector)
+            .map(|v| Value::Vector(Rc::new(v)))
     }
 
     pub(super) fn eval_map_literal(
@@ -76,7 +78,7 @@ impl Interpreter {
             .iter()
             .map(|(k, v)| Ok((self.eval(k)?, self.eval(v)?)))
             .collect::<Result<Vec<_>, _>>()
-            .map(Value::Map)
+            .map(|v| Value::Map(Rc::new(v)))
     }
 
     pub(super) fn eval_set_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
@@ -87,6 +89,6 @@ impl Interpreter {
                 values.push(v);
             }
         }
-        Ok(Value::Set(values))
+        Ok(Value::Set(Rc::new(values)))
     }
 }

@@ -5,7 +5,7 @@ use crate::sema::AstNode;
 fn to_vec(val: Value, span: Span) -> Result<Vec<Value>, RuntimeError> {
     match val {
         Value::List(l) => Ok(l.iter().cloned().collect()),
-        Value::Vector(v) => Ok(v),
+        Value::Vector(v) => Ok((*v).clone()),
         v => Err(RuntimeError::TypeError {
             expected: "list or vector",
             got: v.type_name(),

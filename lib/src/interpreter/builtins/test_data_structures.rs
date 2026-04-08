@@ -36,7 +36,7 @@ mod tests {
     fn vector_builtin_elements() {
         assert!(matches!(
             run("(vector 1 2 3)"),
-            Value::Vector(v) if v == vec![Value::Long(1), Value::Long(2), Value::Long(3)]
+            Value::Vector(v) if *v == vec![Value::Long(1), Value::Long(2), Value::Long(3)]
         ));
     }
 
@@ -56,7 +56,7 @@ mod tests {
         match result {
             Value::Map(m) => {
                 assert_eq!(m.len(), 1);
-                assert_eq!(m[0].0, Value::Keyword("a".to_string()));
+                assert_eq!(m[0].0, Value::Keyword("a".into()));
                 assert_eq!(m[0].1, Value::Long(1));
             }
             _ => panic!("expected Map"),

@@ -22,9 +22,8 @@ fn write(args: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
 }
 
 fn str_conv(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
-    Ok(Value::String(
-        args.iter().map(|(v, _)| v.to_string()).collect(),
-    ))
+    let result: String = args.iter().map(|(v, _)| v.to_string()).collect();
+    Ok(Value::String(result.into()))
 }
 
 pub fn builtins() -> Vec<(&'static str, Value)> {
