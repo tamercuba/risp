@@ -44,7 +44,7 @@ pub enum RuntimeError {
         span: Span,
     },
     UnsupportedType {
-        t: &'static str,
+        t: String,
         span: Span,
     },
     IndexOutOfBounds {
@@ -71,11 +71,28 @@ pub enum Callable {
     Closure {
         arities: Vec<ClosureArity>,
         env: Rc<RefCell<Env>>,
+        name: Option<String>,
     },
     Builtin {
         name: &'static str,
         func: BuiltinFn,
     },
+}
+
+impl std::fmt::Display for Callable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Closure {
+                arities: _,
+                env: _,
+                name,
+            } => {
+                let value = name.clone().unwrap_or("lamba".to_string());
+                write!(f, "#<fn {value}>")
+            }
+            Self::Builtin { name, func: _ } => write!(f, "{name}"),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -209,7 +226,7 @@ impl std::fmt::Display for Value {
                 write!(f, "}}")
             }
             Value::Symbol(s) => write!(f, "{s}"),
-            Value::Callable(_) => write!(f, "#<fn>"),
+            Value::Callable(c) => write!(f, "{c}"),
         }
     }
 }

@@ -197,4 +197,46 @@ mod tests {
         let err = parse_err("{:a}");
         assert!(matches!(err, ParseError::OddMapElements(_)));
     }
+
+    #[test]
+    fn parses_qualified_symbol() {
+        let result = parse("risp.core/map");
+        assert_eq!(
+            result[0].kind,
+            ExprKind::QualifiedSymbol { ns: "risp.core".into(), name: "map".into() }
+        );
+    }
+
+    #[test]
+    fn parses_simple_qualified_symbol() {
+        let result = parse("foo/bar");
+        assert_eq!(
+            result[0].kind,
+            ExprKind::QualifiedSymbol { ns: "foo".into(), name: "bar".into() }
+        );
+    }
+
+    #[test]
+    fn parses_slash_alone_as_symbol() {
+        let result = parse("/");
+        assert_eq!(result[0].kind, ExprKind::Symbol("/".into()));
+    }
+
+    #[test]
+    fn parses_malformed_trailing_slash_as_symbol() {
+        let result = parse("foo/");
+        assert_eq!(result[0].kind, ExprKind::Symbol("foo/".into()));
+    }
+
+    #[test]
+    fn qualified_symbol_inside_list() {
+        let result = parse("(risp.core/+ 1 2)");
+        match &result[0].kind {
+            ExprKind::List(elems) => assert_eq!(
+                elems[0].kind,
+                ExprKind::QualifiedSymbol { ns: "risp.core".into(), name: "+".into() }
+            ),
+            _ => panic!("expected list"),
+        }
+    }
 }

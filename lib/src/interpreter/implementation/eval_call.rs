@@ -15,7 +15,11 @@ impl Interpreter {
         match func {
             Value::Callable(callable) => match callable.as_ref() {
                 Callable::Builtin { func, .. } => func(&args, span),
-                Callable::Closure { arities, env } => {
+                Callable::Closure {
+                    arities,
+                    env,
+                    name: _,
+                } => {
                     let arity = Self::select_arity(arities, args.len(), span)?;
                     let child_env = Rc::new(RefCell::new(Env::with_parent(env.clone())));
                     for (param_id, (value, _)) in arity.params.iter().zip(args.iter()) {

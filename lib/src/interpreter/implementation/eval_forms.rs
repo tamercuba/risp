@@ -55,6 +55,7 @@ impl Interpreter {
             Node::Fn { arities } => Ok(Value::Callable(Rc::new(Callable::Closure {
                 arities: arities.iter().map(Into::into).collect(),
                 env: self.env.clone(),
+                name: None,
             }))),
             _ => unreachable!(),
         }
@@ -64,6 +65,21 @@ impl Interpreter {
         match &node.node {
             Node::Def { name, value } => {
                 let v = self.eval(value)?;
+                let v = match v {
+                    Value::Callable(ref c) => match c.as_ref() {
+                        Callable::Closure {
+                            arities,
+                            env,
+                            name: None,
+                        } => Value::Callable(Rc::new(Callable::Closure {
+                            arities: arities.clone(),
+                            env: env.clone(),
+                            name: Some(name.clone()),
+                        })),
+                        _ => v,
+                    },
+                    _ => v,
+                };
                 self.env.borrow_mut().set_global(name, v);
                 Ok(Value::Nil)
             }

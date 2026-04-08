@@ -8,7 +8,9 @@ pub enum ExprKind {
     Nil,
     String(String),
     Keyword(String),
+
     Symbol(String),
+    QualifiedSymbol { ns: String, name: String },
 
     List(Vec<Expr>),
     Vector(Vec<Expr>),
@@ -22,7 +24,6 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
 }
-
 
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {

@@ -4,15 +4,15 @@ mod tests {
     use crate::interpreter::{Interpreter, Value};
 
     fn run(source: &str) -> Value {
-        Interpreter::new(false).run(source).unwrap()
+        Interpreter::new().run(source).unwrap()
     }
 
     fn run_with_builtins(source: &str) -> Value {
-        Interpreter::new(true).run(source).unwrap()
+        Interpreter::new().run(source).unwrap()
     }
 
     fn run_err(source: &str) -> crate::interpreter::value::RuntimeError {
-        Interpreter::new(false).run(source).unwrap_err()
+        Interpreter::new().run(source).unwrap_err()
     }
 
     #[test]
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn eval_recur_outside_loop_is_error() {
-        let mut interp = Interpreter::new(true);
+        let mut interp = Interpreter::new();
         let result = interp.run("(recur 1)");
         assert!(matches!(result, Err(RuntimeError::RecurOutsideLoop { .. })));
     }
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn eval_loop_body_error_propagates() {
-        let mut interp = Interpreter::new(true);
+        let mut interp = Interpreter::new();
         let result = interp.run("(loop [i 0] (+ i \"bad\"))");
         assert!(matches!(result, Err(RuntimeError::TypeError { .. })));
     }
@@ -430,5 +430,75 @@ mod tests {
             run_with_builtins("(if (or false (= 1 1)) :yes :no)"),
             Value::Keyword(s) if s == "yes"
         ));
+    }
+
+    #[test]
+    fn eval_qualified_var_in_current_ns() {
+        assert!(matches!(run("(def x 42) user/x"), Value::Long(42)));
+    }
+
+    #[test]
+    fn eval_qualified_var_builtin() {
+        assert!(matches!(run_with_builtins("(risp.core/+ 1 2)"), Value::Long(3)));
+    }
+
+    #[test]
+    fn eval_qualified_var_call() {
+        assert!(matches!(
+            run_with_builtins("(risp.core/map (fn [x] (* x 2)) [1 2 3])"),
+            Value::Vector(v) if v.len() == 3
+        ));
+    }
+
+    #[test]
+    fn eval_qualified_var_undefined_ns() {
+        assert!(matches!(
+            run_err("nonexistent/foo"),
+            RuntimeError::UndefinedVariable { .. }
+        ));
+    }
+
+    #[test]
+    fn eval_qualified_var_undefined_name() {
+        assert!(matches!(
+            run_err("user/does-not-exist"),
+            RuntimeError::UndefinedVariable { .. }
+        ));
+    }
+
+    #[test]
+    fn eval_defn_sets_closure_name() {
+        assert!(matches!(
+            run_with_builtins("(defn foo [x] x) (str foo)"),
+            Value::String(s) if s == "#<fn foo>"
+        ));
+    }
+
+    #[test]
+    fn eval_fn_anonymous_has_no_name() {
+        assert!(matches!(
+            run_with_builtins("(str (fn [x] x))"),
+            Value::String(s) if s == "#<fn lamba>"
+        ));
+    }
+
+    #[test]
+    fn eval_string_escape_newline() {
+        assert!(matches!(run("\"a\\nb\""), Value::String(s) if s == "a\nb"));
+    }
+
+    #[test]
+    fn eval_string_escape_tab() {
+        assert!(matches!(run("\"a\\tb\""), Value::String(s) if s == "a\tb"));
+    }
+
+    #[test]
+    fn eval_string_escape_double_quote() {
+        assert!(matches!(run("\"a\\\"b\""), Value::String(s) if s == "a\"b"));
+    }
+
+    #[test]
+    fn eval_string_escape_backslash() {
+        assert!(matches!(run("\"a\\\\b\""), Value::String(s) if s == "a\\b"));
     }
 }

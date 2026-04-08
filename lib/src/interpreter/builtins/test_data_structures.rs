@@ -4,7 +4,7 @@ mod tests {
     use crate::interpreter::value::Value;
 
     fn run(source: &str) -> Value {
-        Interpreter::new(true).run(source).unwrap()
+        Interpreter::new().run(source).unwrap()
     }
 
     #[test]

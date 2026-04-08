@@ -211,11 +211,11 @@ fn nth(elems: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
             }
         }
         (Value::Map(_), _) => Err(RuntimeError::UnsupportedType {
-            t: col.type_name(),
+            t: col.type_name().to_string(),
             span: *col_span,
         }),
         (value, _) => Err(RuntimeError::UnsupportedType {
-            t: value.type_name(),
+            t: value.type_name().to_string(),
             span: *col_span,
         }),
     }

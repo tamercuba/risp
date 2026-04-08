@@ -18,7 +18,7 @@ fn main() -> ExitCode {
         }
     };
 
-    let mut interpreter = Interpreter::new(true);
+    let mut interpreter = Interpreter::new();
     match interpreter.run(&source) {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {

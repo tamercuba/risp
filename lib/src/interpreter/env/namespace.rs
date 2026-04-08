@@ -43,7 +43,11 @@ pub struct NamespaceRegistry {
 
 impl NamespaceRegistry {
     pub fn get(&self, name: &str) -> Option<Value> {
-        let ns = self.namespaces.get(&self.current)?;
+        self.get_in_ns(&self.current, name)
+    }
+
+    pub fn get_in_ns(&self, ns: &str, name: &str) -> Option<Value> {
+        let ns = self.namespaces.get(ns)?;
         ns.get(name).or_else(|| {
             ns.referred
                 .iter()
@@ -51,12 +55,17 @@ impl NamespaceRegistry {
         })
     }
 
-    pub fn global_names(&self) -> Vec<String> {
-        let mut result: Vec<String> = vec![];
-        for ns in self.namespaces.values() {
-            result.extend(ns.global_names().map(|s| s.to_string()));
+    pub fn public_names(&self) -> Vec<String> {
+        let Some(current) = self.namespaces.get(&self.current) else {
+            return vec![];
+        };
+        let mut names: Vec<String> = current.global_names().map(|s| s.to_string()).collect();
+        for referred_name in &current.referred {
+            if let Some(ns) = self.namespaces.get(referred_name) {
+                names.extend(ns.global_names().map(|s| s.to_string()));
+            }
         }
-        result
+        names
     }
 
     pub fn set(&mut self, name: &str, value: Value) {

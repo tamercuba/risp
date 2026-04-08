@@ -51,7 +51,7 @@ impl Completer for RispHelper {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut interpreter = Interpreter::new(true);
+    let mut interpreter = Interpreter::new();
 
     let helper = RispHelper {
         completions: interpreter.completions(),

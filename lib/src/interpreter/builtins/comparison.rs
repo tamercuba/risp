@@ -107,7 +107,7 @@ pub fn builtins() -> Vec<(&'static str, Value)> {
         ("=", Value::new_builtin("=", eq)),
         ("not=", Value::new_builtin("not=", neq)),
         (">", Value::new_builtin(">", is_gt)),
-        (">=", Value::new_builtin("<=", is_ge)),
+        (">=", Value::new_builtin(">=", is_ge)),
         ("<", Value::new_builtin("<", is_lt)),
         ("<=", Value::new_builtin("<=", is_le)),
     ]

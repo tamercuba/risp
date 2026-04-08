@@ -39,8 +39,12 @@ impl Env {
         current_ns.get(name)
     }
 
-    pub fn global_names(&self) -> Vec<String> {
-        self.registry.borrow().global_names()
+    pub fn get_in_ns(&self, ns: &str, name: &str) -> Option<Value> {
+        self.registry.borrow().get_in_ns(ns, name)
+    }
+
+    pub fn public_names(&self) -> Vec<String> {
+        self.registry.borrow().public_names()
     }
 
     pub fn set_global(&mut self, name: &str, value: Value) {

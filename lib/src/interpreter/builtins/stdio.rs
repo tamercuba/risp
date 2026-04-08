@@ -1,30 +1,35 @@
 use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
-fn print_line(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
-    let final_buff = args
-        .iter()
-        .map(|(v, _)| v.to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    println!(";; {}", final_buff);
-    Ok(Value::Nil)
+fn write(args: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
+    if args.len() > 1 || args.is_empty() {
+        return Err(RuntimeError::WrongArity {
+            expected: 1,
+            got: args.len(),
+            span,
+        });
+    }
+    match &args[0] {
+        (Value::String(s), _) => {
+            print!("{}", s);
+            Ok(Value::Nil)
+        }
+        (v, s) => Err(RuntimeError::UnsupportedType {
+            t: v.type_name().to_string(),
+            span: *s,
+        }),
+    }
 }
 
-fn print_(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
-    let final_buff = args
-        .iter()
-        .map(|(v, _)| v.to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-    print!(";; {}", final_buff);
-    Ok(Value::Nil)
+fn str_conv(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
+    Ok(Value::String(
+        args.iter().map(|(v, _)| v.to_string()).collect(),
+    ))
 }
 
 pub fn builtins() -> Vec<(&'static str, Value)> {
     vec![
-        ("println", Value::new_builtin("println", print_line)),
-        ("print", Value::new_builtin("printl", print_)),
+        ("write", Value::new_builtin("write", write)),
+        ("str", Value::new_builtin("str", str_conv)),
     ]
 }

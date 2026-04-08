@@ -31,6 +31,9 @@ fn analyze_expr(expr: Expr, scope: &Scope) -> Result<AstNode, AnalyzeError> {
             Some(id) => Ok(AstNode::new(Node::Var(id), span)),
             None => Ok(AstNode::new(Node::GlobalVar(s), span)),
         },
+        ExprKind::QualifiedSymbol { ns, name } => {
+            Ok(AstNode::new(Node::QualifiedVar { ns, name }, span))
+        }
         ExprKind::List(elems) => analyze_list(elems, span, scope),
         ExprKind::Vector(elems) => {
             let nodes = elems

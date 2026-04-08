@@ -549,4 +549,33 @@ mod tests {
             _ => panic!("expected And"),
         }
     }
+
+    #[test]
+    fn analyzes_qualified_symbol() {
+        let result = parse("risp.core/map");
+        assert!(matches!(
+            &result[0].node,
+            Node::QualifiedVar { ns, name } if ns == "risp.core" && name == "map"
+        ));
+    }
+
+    #[test]
+    fn analyzes_simple_qualified_symbol() {
+        let result = parse("foo/bar");
+        assert!(matches!(
+            &result[0].node,
+            Node::QualifiedVar { ns, name } if ns == "foo" && name == "bar"
+        ));
+    }
+
+    #[test]
+    fn qualified_symbol_is_not_a_local_var() {
+        let result = parse("(let [x 1] risp.core/x)");
+        match &result[0].node {
+            Node::Let { body, .. } => {
+                assert!(matches!(&body.node, Node::QualifiedVar { .. }))
+            }
+            _ => panic!("expected let"),
+        }
+    }
 }

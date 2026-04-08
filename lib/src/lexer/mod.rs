@@ -12,6 +12,7 @@ pub struct Lexer {
     buffer_lo: u32,
     in_comment: bool,
     in_string: bool,
+    escape_next: bool,
 }
 
 type DelimiterVariant = fn(Content<()>) -> Token;
@@ -27,9 +28,28 @@ impl Lexer {
                 }
                 continue;
             }
-            if lexer.in_string && ch != '"' {
-                lexer.push_to_buffer(ch, ch_offset);
-                continue;
+            if lexer.in_string {
+                if lexer.escape_next {
+                    lexer.escape_next = false;
+                    let escaped = match ch {
+                        'n' => '\n',
+                        't' => '\t',
+                        'r' => '\r',
+                        '\\' => '\\',
+                        '"' => '"',
+                        _ => ch,
+                    };
+                    lexer.push_to_buffer(escaped, ch_offset);
+                    continue;
+                }
+                if ch != '"' {
+                    if ch == '\\' {
+                        lexer.escape_next = true;
+                    } else {
+                        lexer.push_to_buffer(ch, ch_offset);
+                    }
+                    continue;
+                }
             }
 
             match ch {

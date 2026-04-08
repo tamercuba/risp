@@ -31,6 +31,21 @@ impl Interpreter {
         }
     }
 
+    pub(super) fn eval_qualified_var(
+        &self,
+        ns: &str,
+        name: &str,
+        span: Span,
+    ) -> Result<Value, RuntimeError> {
+        self.env
+            .borrow()
+            .get_in_ns(ns, name)
+            .ok_or(RuntimeError::UndefinedVariable {
+                name: format!("{ns}/{name}"),
+                span,
+            })
+    }
+
     pub(super) fn eval_list_literal(&mut self, elems: &[AstNode]) -> Result<Value, RuntimeError> {
         let values = elems
             .iter()
