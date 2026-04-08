@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::interpreter::Value;
 
@@ -38,7 +39,7 @@ impl Default for Namespace {
 
 pub struct NamespaceRegistry {
     namespaces: HashMap<String, Namespace>,
-    pub current: String,
+    pub current: Rc<str>,
 }
 
 impl NamespaceRegistry {
@@ -56,7 +57,7 @@ impl NamespaceRegistry {
     }
 
     pub fn public_names(&self) -> Vec<String> {
-        let Some(current) = self.namespaces.get(&self.current) else {
+        let Some(current) = self.namespaces.get(self.current.as_ref()) else {
             return vec![];
         };
         let mut names: Vec<String> = current.global_names().map(|s| s.to_string()).collect();
@@ -70,7 +71,7 @@ impl NamespaceRegistry {
 
     pub fn set(&mut self, name: &str, value: Value) {
         self.namespaces
-            .entry(self.current.clone())
+            .entry(self.current.to_string())
             .or_insert_with(|| Namespace::new(&self.current))
             .defs
             .insert(name.to_string(), value);
@@ -101,7 +102,7 @@ impl Default for NamespaceRegistry {
     fn default() -> Self {
         Self {
             namespaces: Default::default(),
-            current: "user".to_string(),
+            current: "user".into(),
         }
     }
 }

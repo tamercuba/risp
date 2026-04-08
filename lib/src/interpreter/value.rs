@@ -104,9 +104,9 @@ pub enum Value {
     String(Rc<str>),
     Keyword(Rc<str>),
     List(RispList<Value>),
-    Vector(Vec<Value>),
-    Map(Vec<(Value, Value)>),
-    Set(Vec<Value>),
+    Vector(Rc<Vec<Value>>),
+    Map(Rc<Vec<(Value, Value)>>),
+    Set(Rc<Vec<Value>>),
     Symbol(Rc<str>),
     Callable(Rc<Callable>),
 }

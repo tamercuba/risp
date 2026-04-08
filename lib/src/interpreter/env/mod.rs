@@ -64,11 +64,11 @@ impl Env {
         self.registry.borrow_mut().create(ns_name, referred);
     }
 
-    pub fn get_current_namespace(&self) -> String {
+    pub fn get_current_namespace(&self) -> Rc<str> {
         self.registry.borrow().current.clone()
     }
 
     pub fn set_current_namespace(&self, ns: &str) {
-        self.registry.borrow_mut().current = ns.to_string();
+        self.registry.borrow_mut().current = ns.into();
     }
 }

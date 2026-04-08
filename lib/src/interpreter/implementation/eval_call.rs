@@ -94,9 +94,9 @@ impl Interpreter {
                         let arg = self.eval(&args[0])?;
                         match arg {
                             Value::Map(pairs) => Ok(pairs
-                                .into_iter()
+                                .iter()
                                 .find(|(key, _)| matches!(key, Value::Keyword(s) if *s == v))
-                                .map(|(_, v)| v)
+                                .map(|(_, v)| v.clone())
                                 .unwrap_or(Value::Nil)),
                             _ => Err(RuntimeError::TypeError {
                                 expected: "map",

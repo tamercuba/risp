@@ -36,7 +36,7 @@ mod tests {
     fn vector_builtin_elements() {
         assert!(matches!(
             run("(vector 1 2 3)"),
-            Value::Vector(v) if v == vec![Value::Long(1), Value::Long(2), Value::Long(3)]
+            Value::Vector(v) if *v == vec![Value::Long(1), Value::Long(2), Value::Long(3)]
         ));
     }
 

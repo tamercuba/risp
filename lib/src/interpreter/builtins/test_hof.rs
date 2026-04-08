@@ -25,7 +25,7 @@ mod tests {
 
     #[test]
     fn map_applies_function() {
-        assert!(matches!(run("(map (fn [x] (* x 2)) [1 2 3])"), Value::Vector(v) if v == vec![Value::Long(2), Value::Long(4), Value::Long(6)]));
+        assert!(matches!(run("(map (fn [x] (* x 2)) [1 2 3])"), Value::Vector(v) if *v == vec![Value::Long(2), Value::Long(4), Value::Long(6)]));
     }
 
     #[test]
