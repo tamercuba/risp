@@ -28,7 +28,7 @@ impl Lexer {
                 }
                 continue;
             }
-            if lexer.in_string && ch != '"' {
+            if lexer.in_string {
                 if lexer.escape_next {
                     lexer.escape_next = false;
                     let escaped = match ch {
@@ -40,12 +40,16 @@ impl Lexer {
                         _ => ch,
                     };
                     lexer.push_to_buffer(escaped, ch_offset);
-                } else if ch == '\\' {
-                    lexer.escape_next = true;
-                } else {
-                    lexer.push_to_buffer(ch, ch_offset);
+                    continue;
                 }
-                continue;
+                if ch != '"' {
+                    if ch == '\\' {
+                        lexer.escape_next = true;
+                    } else {
+                        lexer.push_to_buffer(ch, ch_offset);
+                    }
+                    continue;
+                }
             }
 
             match ch {

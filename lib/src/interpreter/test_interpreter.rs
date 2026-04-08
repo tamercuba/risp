@@ -465,4 +465,40 @@ mod tests {
             RuntimeError::UndefinedVariable { .. }
         ));
     }
+
+    #[test]
+    fn eval_defn_sets_closure_name() {
+        assert!(matches!(
+            run_with_builtins("(defn foo [x] x) (str foo)"),
+            Value::String(s) if s == "#<fn foo>"
+        ));
+    }
+
+    #[test]
+    fn eval_fn_anonymous_has_no_name() {
+        assert!(matches!(
+            run_with_builtins("(str (fn [x] x))"),
+            Value::String(s) if s == "#<fn lamba>"
+        ));
+    }
+
+    #[test]
+    fn eval_string_escape_newline() {
+        assert!(matches!(run("\"a\\nb\""), Value::String(s) if s == "a\nb"));
+    }
+
+    #[test]
+    fn eval_string_escape_tab() {
+        assert!(matches!(run("\"a\\tb\""), Value::String(s) if s == "a\tb"));
+    }
+
+    #[test]
+    fn eval_string_escape_double_quote() {
+        assert!(matches!(run("\"a\\\"b\""), Value::String(s) if s == "a\"b"));
+    }
+
+    #[test]
+    fn eval_string_escape_backslash() {
+        assert!(matches!(run("\"a\\\\b\""), Value::String(s) if s == "a\\b"));
+    }
 }

@@ -193,4 +193,67 @@ mod tests {
     fn only_whitespace_produces_no_tokens() {
         assert_eq!(Lexer::tokenize("   \t\n  "), vec![]);
     }
+
+    #[test]
+    fn string_escape_newline() {
+        let tokens = Lexer::tokenize(r#""\n""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("\n".to_string(), span(0, 4)))]
+        );
+    }
+
+    #[test]
+    fn string_escape_tab() {
+        let tokens = Lexer::tokenize(r#""\t""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("\t".to_string(), span(0, 4)))]
+        );
+    }
+
+    #[test]
+    fn string_escape_carriage_return() {
+        let tokens = Lexer::tokenize(r#""\r""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("\r".to_string(), span(0, 4)))]
+        );
+    }
+
+    #[test]
+    fn string_escape_backslash() {
+        let tokens = Lexer::tokenize(r#""\\""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("\\".to_string(), span(0, 4)))]
+        );
+    }
+
+    #[test]
+    fn string_escape_double_quote() {
+        let tokens = Lexer::tokenize(r#""\"""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("\"".to_string(), span(0, 4)))]
+        );
+    }
+
+    #[test]
+    fn string_escape_in_middle() {
+        let tokens = Lexer::tokenize(r#""a\nb""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("a\nb".to_string(), span(0, 6)))]
+        );
+    }
+
+    #[test]
+    fn string_unknown_escape_passes_through() {
+        let tokens = Lexer::tokenize(r#""\x""#);
+        assert_eq!(
+            tokens,
+            vec![Token::String(Content::new("x".to_string(), span(0, 4)))]
+        );
+    }
 }
