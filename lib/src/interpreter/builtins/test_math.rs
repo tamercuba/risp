@@ -4,11 +4,11 @@ mod tests {
     use crate::interpreter::value::{RuntimeError, Value};
 
     fn run(source: &str) -> Value {
-        Interpreter::new(true).run(source).unwrap()
+        Interpreter::new().run(source).unwrap()
     }
 
     fn run_err(source: &str) -> RuntimeError {
-        Interpreter::new(true).run(source).unwrap_err()
+        Interpreter::new().run(source).unwrap_err()
     }
 
     fn approx(a: f64, b: f64) -> bool {

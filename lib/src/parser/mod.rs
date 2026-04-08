@@ -130,7 +130,7 @@ impl Parser {
             "nil" => ExprKind::Nil,
             s if s.contains('/') && !s.starts_with('/') => {
                 let (ns, name) = s.split_once('/').unwrap();
-                if name.is_empty() || name.contains('/') {
+                if name.is_empty() || (name.contains('/') && name != "/") {
                     ExprKind::Symbol(c.content)
                 } else {
                     ExprKind::QualifiedSymbol {

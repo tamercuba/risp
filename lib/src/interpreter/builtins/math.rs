@@ -1,6 +1,30 @@
 use crate::interpreter::{RuntimeError, Value};
 use crate::lexer::Span;
 
+fn _mod(args: &[(Value, Span)], span: Span) -> Result<Value, RuntimeError> {
+    match args.len() {
+        2 => {
+            let (num_v, num_span) = &args[0];
+            let (div_v, _) = &args[1];
+            match (num_v, div_v) {
+                (Value::Double(n), Value::Double(d)) => Ok(Value::Double(n % d)),
+                (Value::Double(n), Value::Long(d)) => Ok(Value::Double(n % (*d as f64))),
+                (Value::Long(n), Value::Double(d)) => Ok(Value::Double((*n as f64) % d)),
+                (Value::Long(n), Value::Long(d)) => Ok(Value::Long(n % d)),
+                (n, v) => Err(RuntimeError::UnsupportedType {
+                    t: format!("{a} % {b}", a = n.type_name(), b = v.type_name()),
+                    span: *num_span,
+                }),
+            }
+        }
+        n => Err(RuntimeError::WrongArity {
+            expected: 2,
+            got: n,
+            span,
+        }),
+    }
+}
+
 fn sum(args: &[(Value, Span)], _: Span) -> Result<Value, RuntimeError> {
     let mut has_float = false;
     let mut result_int: i64 = 0;
@@ -173,5 +197,6 @@ pub fn builtins() -> Vec<(&'static str, Value)> {
         ("-", Value::new_builtin("-", minus)),
         ("*", Value::new_builtin("*", times)),
         ("/", Value::new_builtin("/", divide)),
+        ("mod", Value::new_builtin("mod", _mod)),
     ]
 }

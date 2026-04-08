@@ -20,19 +20,18 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn new(load_builtins: bool) -> Self {
+    pub fn new() -> Self {
         let env = Rc::new(RefCell::new(Env::default()));
-        if load_builtins {
+        {
             let e = env.borrow();
-            e.load_builtins("risp.core", builtins());
+            e.load_builtins("risp.internal", builtins());
+            e.create_ns("risp.core", vec!["risp.internal"]);
             e.create_ns("user", vec!["risp.core"]);
         }
         let mut interp = Self { env };
-        if load_builtins {
-            interp
-                .run_in_ns(SRC_STDLIB_CORE, "risp.core")
-                .expect("core.risp failed to load");
-        }
+        interp
+            .run_in_ns(SRC_STDLIB_CORE, "risp.core")
+            .expect("core.risp failed to load");
         interp
     }
 
@@ -45,7 +44,7 @@ impl Interpreter {
     }
 
     pub fn completions(&self) -> Vec<String> {
-        let builtins = self.env.borrow().global_names();
+        let builtins = self.env.borrow().public_names();
         let special_forms = ["if", "let", "fn", "def", "defn", "do", "apply"];
         special_forms
             .iter()

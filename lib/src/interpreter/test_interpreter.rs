@@ -4,15 +4,15 @@ mod tests {
     use crate::interpreter::{Interpreter, Value};
 
     fn run(source: &str) -> Value {
-        Interpreter::new(false).run(source).unwrap()
+        Interpreter::new().run(source).unwrap()
     }
 
     fn run_with_builtins(source: &str) -> Value {
-        Interpreter::new(true).run(source).unwrap()
+        Interpreter::new().run(source).unwrap()
     }
 
     fn run_err(source: &str) -> crate::interpreter::value::RuntimeError {
-        Interpreter::new(false).run(source).unwrap_err()
+        Interpreter::new().run(source).unwrap_err()
     }
 
     #[test]
@@ -310,7 +310,7 @@ mod tests {
 
     #[test]
     fn eval_recur_outside_loop_is_error() {
-        let mut interp = Interpreter::new(true);
+        let mut interp = Interpreter::new();
         let result = interp.run("(recur 1)");
         assert!(matches!(result, Err(RuntimeError::RecurOutsideLoop { .. })));
     }
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn eval_loop_body_error_propagates() {
-        let mut interp = Interpreter::new(true);
+        let mut interp = Interpreter::new();
         let result = interp.run("(loop [i 0] (+ i \"bad\"))");
         assert!(matches!(result, Err(RuntimeError::TypeError { .. })));
     }

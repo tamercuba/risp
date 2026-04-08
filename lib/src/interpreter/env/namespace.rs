@@ -55,12 +55,11 @@ impl NamespaceRegistry {
         })
     }
 
-    pub fn global_names(&self) -> Vec<String> {
-        let mut result: Vec<String> = vec![];
-        for ns in self.namespaces.values() {
-            result.extend(ns.global_names().map(|s| s.to_string()));
-        }
-        result
+    pub fn public_names(&self) -> Vec<String> {
+        self.namespaces
+            .get("risp.core")
+            .map(|ns| ns.global_names().map(|s| s.to_string()).collect())
+            .unwrap_or_default()
     }
 
     pub fn set(&mut self, name: &str, value: Value) {

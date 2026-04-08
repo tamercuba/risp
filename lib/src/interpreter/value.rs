@@ -44,7 +44,7 @@ pub enum RuntimeError {
         span: Span,
     },
     UnsupportedType {
-        t: &'static str,
+        t: String,
         span: Span,
     },
     IndexOutOfBounds {
