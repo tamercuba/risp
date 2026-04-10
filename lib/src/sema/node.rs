@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::lexer::Span;
+use crate::sema::LocalId;
 
 #[derive(Debug)]
 pub enum AnalyzeError {
@@ -51,9 +52,10 @@ impl AstNode {
 
 #[derive(Debug, Clone)]
 pub struct FnArity {
-    pub params: Vec<u32>,
-    pub variadic: Option<u32>,
+    pub params: Vec<LocalId>,
+    pub variadic: Option<LocalId>,
     pub body: Rc<AstNode>,
+    pub frame_size: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -65,7 +67,7 @@ pub enum Node {
     String(String),
     Keyword(String),
 
-    Var(u32),
+    Var(LocalId),
     GlobalVar(String),
     QualifiedVar {
         ns: String,
@@ -80,7 +82,7 @@ pub enum Node {
         value: Box<AstNode>,
     },
     Let {
-        bindings: Vec<(u32, AstNode)>,
+        bindings: Vec<(LocalId, AstNode)>,
         body: Box<AstNode>,
     },
     Fn {
@@ -98,7 +100,7 @@ pub enum Node {
     Do(Vec<AstNode>),
 
     Loop {
-        bindings: Vec<(u32, AstNode)>,
+        bindings: Vec<(LocalId, AstNode)>,
         body: Box<AstNode>,
     },
     Recur(Vec<AstNode>),

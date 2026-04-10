@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use super::{Env, Interpreter, RuntimeError, Value};
 use crate::interpreter::value::EvalFlow;
-use crate::sema::{AstNode, Node};
+use crate::sema::{AstNode, LocalId, Node};
 
 impl Interpreter {
     fn eval_flow(&mut self, node: &AstNode) -> Result<EvalFlow, RuntimeError> {
@@ -52,7 +52,7 @@ impl Interpreter {
     }
     pub(super) fn eval_loop(
         &mut self,
-        bindings: &[(u32, AstNode)],
+        bindings: &[(LocalId, AstNode)],
         body: &AstNode,
     ) -> Result<Value, RuntimeError> {
         let child_env = Rc::new(RefCell::new(Env::with_parent(self.env.clone())));

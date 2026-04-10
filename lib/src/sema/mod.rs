@@ -3,6 +3,7 @@ mod node;
 
 use std::rc::Rc;
 
+pub use self::ast_scope::LocalId;
 use self::ast_scope::Scope;
 pub use self::node::{AnalyzeError, AstNode, FnArity, Node};
 use crate::lexer::Span;
@@ -188,14 +189,15 @@ fn analyze_let(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, A
     }
 
     let mut iter = bindings_array.into_iter();
-    let mut bindings: Vec<(u32, AstNode)> = vec![];
+    let mut bindings: Vec<(LocalId, AstNode)> = vec![];
 
     while let (Some(k), Some(v)) = (iter.next(), iter.next()) {
+        let val = analyze_expr(v, &child_scope)?;
         let key = match k.kind {
             ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
             _ => Err(AnalyzeError::InvalidBindingKey(k.span)),
         }?;
-        let val = analyze_expr(v, &child_scope)?;
+
         bindings.push((key, val));
     }
 
@@ -207,7 +209,7 @@ fn analyze_let(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, A
 fn analyze_fn_params(
     params_expr: Expr,
     scope: &mut Scope,
-) -> Result<(Vec<u32>, Option<u32>), AnalyzeError> {
+) -> Result<(Vec<LocalId>, Option<LocalId>), AnalyzeError> {
     let params_span = params_expr.span;
     let param_exprs: Vec<Expr> = match params_expr.kind {
         ExprKind::Vector(v) => Ok(v),
@@ -246,18 +248,66 @@ fn analyze_fn_params(
     Ok((params, variadic))
 }
 
+fn frame_size(node: &AstNode) -> usize {
+    match &node.node {
+        Node::Var(id) => *id as usize + 1,
+        Node::Let { bindings, body } | Node::Loop { bindings, body } => {
+            let b = bindings
+                .iter()
+                .map(|(id, val)| (*id as usize + 1).max(frame_size(val)))
+                .max()
+                .unwrap_or(0);
+            b.max(frame_size(body))
+        }
+        Node::Call { callee, args } => {
+            let callee_size = frame_size(callee);
+            let args_max = args.iter().map(frame_size).max().unwrap_or(0);
+            callee_size.max(args_max)
+        }
+        Node::If { cond, then, _else } => {
+            let else_size = _else.as_deref().map(frame_size).unwrap_or(0);
+            frame_size(cond).max(frame_size(then)).max(else_size)
+        }
+        Node::Do(nodes) | Node::And(nodes) | Node::Or(nodes) => {
+            nodes.iter().map(frame_size).max().unwrap_or(0)
+        }
+        Node::Recur(args) => args.iter().map(frame_size).max().unwrap_or(0),
+        Node::Def { value, .. } => frame_size(value),
+        Node::Vector(nodes) | Node::List(nodes) | Node::Set(nodes) => {
+            nodes.iter().map(frame_size).max().unwrap_or(0)
+        }
+        Node::Map(pairs) => pairs
+            .iter()
+            .map(|(k, v)| frame_size(k).max(frame_size(v)))
+            .max()
+            .unwrap_or(0),
+        Node::Long(_)
+        | Node::Double(_)
+        | Node::Bool(_)
+        | Node::Nil
+        | Node::String(_)
+        | Node::Keyword(_)
+        | Node::GlobalVar(_)
+        | Node::QualifiedVar { .. }
+        | Node::Fn { .. }
+        | Node::Symbol(_) => 0,
+    }
+}
+
 fn analyze_fn_arity(
     params_expr: Expr,
     body_expr: Expr,
     scope: &Scope,
 ) -> Result<FnArity, AnalyzeError> {
-    let mut child_scope = scope.enter_scope();
+    let mut child_scope = scope.enter_fn_scope();
     let (params, variadic) = analyze_fn_params(params_expr, &mut child_scope)?;
     let body = Rc::new(analyze_expr(body_expr, &child_scope)?);
+    let frame_size = frame_size(&body);
     Ok(FnArity {
         params,
         variadic,
         body,
+        frame_size,
     })
 }
 
@@ -292,7 +342,7 @@ fn analyze_arities(
 ) -> Result<Vec<FnArity>, AnalyzeError> {
     match arity_exprs {
         [] => Err(AnalyzeError::InvalidArity { form, span }),
-        // single-arity sugar sem body: (fn [params])
+        // single-arity sugar without body: (fn [params])
         [only] if matches!(only.kind, ExprKind::Vector(_)) => {
             Err(AnalyzeError::InvalidArity { form, span })
         }
@@ -323,8 +373,8 @@ fn analyze_fn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, An
 }
 
 fn analyze_defn(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, AnalyzeError> {
-    // (defn name [params] body)          — single arity
-    // (defn name ([params] body) ...)    — multi-arity
+    // (defn name [params] body)       ; single arity
+    // (defn name ([params] body) ...) ; multi-arity
     if elems.len() < 3 {
         return Err(AnalyzeError::InvalidArity { form: "defn", span });
     }
@@ -361,14 +411,14 @@ fn analyze_loop(elems: Vec<Expr>, span: Span, scope: &Scope) -> Result<AstNode, 
     }
 
     let mut iter = bindings_array.into_iter();
-    let mut bindings: Vec<(u32, AstNode)> = vec![];
+    let mut bindings: Vec<(LocalId, AstNode)> = vec![];
 
     while let (Some(k), Some(v)) = (iter.next(), iter.next()) {
+        let val = analyze_expr(v, &child_scope)?;
         let key = match k.kind {
             ExprKind::Symbol(name) => Ok(child_scope.bind(name)),
             _ => Err(AnalyzeError::InvalidBindingKey(k.span)),
         }?;
-        let val = analyze_expr(v, &child_scope)?;
         bindings.push((key, val));
     }
 

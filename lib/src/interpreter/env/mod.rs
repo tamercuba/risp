@@ -3,12 +3,13 @@ mod namespace;
 use self::namespace::NamespaceRegistry;
 
 use super::Value;
+use crate::sema::LocalId;
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Default)]
 pub struct Env {
-    locals: HashMap<u32, Value>,
+    locals: HashMap<LocalId, Value>,
     registry: Rc<RefCell<NamespaceRegistry>>,
     parent: Option<Rc<RefCell<Env>>>,
 }
@@ -22,14 +23,14 @@ impl Env {
         }
     }
 
-    pub fn get_local(&self, id: u32) -> Option<Value> {
+    pub fn get_local(&self, id: LocalId) -> Option<Value> {
         self.locals
             .get(&id)
             .cloned()
             .or_else(|| self.parent.as_ref()?.borrow().get_local(id))
     }
 
-    pub fn set_local(&mut self, id: u32, value: Value) -> Option<()> {
+    pub fn set_local(&mut self, id: LocalId, value: Value) -> Option<()> {
         self.locals.insert(id, value);
         None
     }
