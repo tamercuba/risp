@@ -3,35 +3,55 @@ mod namespace;
 use self::namespace::NamespaceRegistry;
 
 use super::Value;
-use std::collections::HashMap;
+use crate::sema::LocalId;
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Default)]
 pub struct Env {
-    locals: HashMap<u32, Value>,
+    frame: Vec<Option<Value>>,
     registry: Rc<RefCell<NamespaceRegistry>>,
     parent: Option<Rc<RefCell<Env>>>,
 }
 
 impl Env {
-    pub fn with_parent(parent: Rc<RefCell<Env>>) -> Self {
+    pub fn with_frame(parent: Rc<RefCell<Env>>, size: usize) -> Self {
         Self {
-            parent: Some(parent.clone()),
+            frame: vec![None; size],
             registry: parent.borrow().registry.clone(),
-            ..Default::default()
+            parent: Some(parent.clone()),
         }
     }
 
-    pub fn get_local(&self, id: u32) -> Option<Value> {
-        self.locals
-            .get(&id)
-            .cloned()
-            .or_else(|| self.parent.as_ref()?.borrow().get_local(id))
+    pub fn root(registry: Rc<RefCell<NamespaceRegistry>>) -> Self {
+        Self {
+            frame: Vec::new(),
+            registry,
+            parent: None,
+        }
     }
 
-    pub fn set_local(&mut self, id: u32, value: Value) -> Option<()> {
-        self.locals.insert(id, value);
-        None
+    pub fn get_local(&self, id: LocalId) -> Option<Value> {
+        let idx = id as usize;
+        if idx < self.frame.len() {
+            if let Some(v) = self.frame[idx].clone() {
+                return Some(v);
+            }
+        }
+
+        self.parent.as_ref()?.borrow().get_local(id)
+    }
+
+    pub fn frame_len(&self) -> usize {
+        self.frame.len()
+    }
+
+    pub fn set_local(&mut self, id: LocalId, value: Value) {
+        let idx = id as usize;
+        if idx >= self.frame.len() {
+            panic!("Stack frame bug setting local variable");
+        }
+
+        self.frame[idx] = Some(value);
     }
 
     pub fn get_global(&self, name: &str) -> Option<Value> {

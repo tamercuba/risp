@@ -1,6 +1,6 @@
 use crate::collections::RispList;
 use crate::lexer::Span;
-use crate::sema::{AstNode, FnArity};
+use crate::sema::{AstNode, FnArity, LocalId};
 use std::{cell::RefCell, rc::Rc};
 
 use super::env::Env;
@@ -9,9 +9,10 @@ type BuiltinFn = fn(&[(Value, Span)], Span) -> Result<Value, RuntimeError>;
 
 #[derive(Clone)]
 pub struct ClosureArity {
-    pub params: Vec<u32>,
-    pub variadic: Option<u32>,
+    pub params: Vec<LocalId>,
+    pub variadic: Option<LocalId>,
     pub body: Rc<AstNode>,
+    pub frame_size: usize,
 }
 
 impl From<&FnArity> for ClosureArity {
@@ -20,6 +21,7 @@ impl From<&FnArity> for ClosureArity {
             params: a.params.clone(),
             variadic: a.variadic,
             body: a.body.clone(),
+            frame_size: a.frame_size,
         }
     }
 }

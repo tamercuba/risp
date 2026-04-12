@@ -3,7 +3,7 @@ use std::rc::Rc;
 use super::{Interpreter, RuntimeError, Value};
 use crate::collections::RispList;
 use crate::lexer::Span;
-use crate::sema::AstNode;
+use crate::sema::{AstNode, LocalId};
 
 fn seq_to_list(v: Value) -> Value {
     match v {
@@ -13,7 +13,7 @@ fn seq_to_list(v: Value) -> Value {
 }
 
 impl Interpreter {
-    pub(super) fn eval_var(&self, id: u32, span: Span) -> Result<Value, RuntimeError> {
+    pub(super) fn eval_var(&self, id: LocalId, span: Span) -> Result<Value, RuntimeError> {
         match self.env.borrow().get_local(id) {
             Some(v) => Ok(v),
             None => Err(RuntimeError::UndefinedVariable {
