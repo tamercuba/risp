@@ -11,6 +11,7 @@
         ];
         shellHook = ''
           export NIX_SHELL_NAME="risp"
+          exec zsh
         '';
       };
     };
