@@ -29,7 +29,7 @@ impl<'a> Scope<'a> {
         Self {
             bindings: HashMap::new(),
             parent: Some(self),
-            next_id: 0,
+            next_id: self.next_id,
         }
     }
 

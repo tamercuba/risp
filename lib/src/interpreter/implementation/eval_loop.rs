@@ -1,12 +1,9 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use super::{Env, Interpreter, RuntimeError, Value};
+use super::{Interpreter, RuntimeError, Value};
 use crate::interpreter::value::EvalFlow;
 use crate::sema::{AstNode, LocalId, Node};
 
 impl Interpreter {
-    fn eval_flow(&mut self, node: &AstNode) -> Result<EvalFlow, RuntimeError> {
+    pub fn eval_flow(&mut self, node: &AstNode) -> Result<EvalFlow, RuntimeError> {
         match &node.node {
             Node::Recur(args) => {
                 let vals = args
@@ -37,44 +34,36 @@ impl Interpreter {
                 self.eval_flow(last)
             }
             Node::Let { bindings, body } => {
-                let child_env = Rc::new(RefCell::new(Env::with_parent(self.env.clone())));
-                for (id, v_node) in bindings.iter() {
-                    let value = self.eval(v_node)?;
-                    child_env.borrow_mut().set_local(*id, value);
-                }
-                let saved = std::mem::replace(&mut self.env, child_env);
+                let saved = self.eval_bindings_with_toplevel_frame(bindings)?;
                 let result = self.eval_flow(body);
-                self.env = saved;
+                if let Some(env) = saved {
+                    self.env = env;
+                }
                 result
             }
             _ => self.eval(node).map(EvalFlow::Value),
         }
     }
+
     pub(super) fn eval_loop(
         &mut self,
         bindings: &[(LocalId, AstNode)],
         body: &AstNode,
     ) -> Result<Value, RuntimeError> {
-        let child_env = Rc::new(RefCell::new(Env::with_parent(self.env.clone())));
-        for (id, v_node) in bindings.iter() {
-            let value = self.eval(v_node)?;
-            child_env.borrow_mut().set_local(*id, value);
-        }
-        let saved = std::mem::replace(&mut self.env, child_env);
-
+        let saved = self.eval_bindings_with_toplevel_frame(bindings)?;
         let result = loop {
-            match self.eval_flow(body) {
-                Err(e) => break Err(e),
-                Ok(EvalFlow::Value(v)) => break Ok(v),
-                Ok(EvalFlow::Recur(new_vals)) => {
+            match self.eval_flow(body)? {
+                EvalFlow::Value(v) => break v,
+                EvalFlow::Recur(new_vals) => {
                     for ((id, _), new_val) in bindings.iter().zip(new_vals) {
                         self.env.borrow_mut().set_local(*id, new_val);
                     }
                 }
             }
         };
-
-        self.env = saved;
-        result
+        if let Some(env) = saved {
+            self.env = env;
+        }
+        Ok(result)
     }
 }

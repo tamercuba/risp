@@ -21,7 +21,8 @@ impl Interpreter {
                     name: _,
                 } => {
                     let arity = Self::select_arity(arities, args.len(), span)?;
-                    let child_env = Rc::new(RefCell::new(Env::with_parent(env.clone())));
+                    let child_env =
+                        Rc::new(RefCell::new(Env::with_frame(env.clone(), arity.frame_size)));
                     for (param_id, (value, _)) in arity.params.iter().zip(args.iter()) {
                         child_env.borrow_mut().set_local(*param_id, value.clone());
                     }

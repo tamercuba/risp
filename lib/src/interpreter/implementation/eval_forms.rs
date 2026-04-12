@@ -1,9 +1,38 @@
-use super::{Callable, Env, Interpreter, RuntimeError, Value};
-use crate::sema::{AstNode, Node};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use super::{Callable, Env, Interpreter, RuntimeError, Value};
+use crate::sema::{AstNode, LocalId, Node};
+
 impl Interpreter {
+    pub(super) fn eval_bindings_with_toplevel_frame(
+        &mut self,
+        bindings: &[(LocalId, AstNode)],
+    ) -> Result<Option<Rc<RefCell<Env>>>, RuntimeError> {
+        let max_id = bindings
+            .iter()
+            .map(|(id, _)| *id as usize)
+            .max()
+            .unwrap_or(0);
+        if self.env.borrow().frame_len() > max_id {
+            // Inside a function frame: slots already allocated, write directly
+            for (id, val_node) in bindings.iter() {
+                let val = self.eval(val_node)?;
+                self.env.borrow_mut().set_local(*id, val);
+            }
+            Ok(None)
+        } else {
+            // Top-level: no function frame exists, allocate a temporary one
+            let child_env = Rc::new(RefCell::new(Env::with_frame(self.env.clone(), max_id + 1)));
+            let saved = std::mem::replace(&mut self.env, child_env);
+            for (id, val_node) in bindings.iter() {
+                let val = self.eval(val_node)?;
+                self.env.borrow_mut().set_local(*id, val);
+            }
+            Ok(Some(saved))
+        }
+    }
+
     pub(super) fn eval_if(&mut self, node: &AstNode) -> Result<Value, RuntimeError> {
         match &node.node {
             Node::If { cond, then, _else } => {
@@ -34,16 +63,11 @@ impl Interpreter {
     pub(super) fn eval_let(&mut self, node: &AstNode) -> Result<Value, RuntimeError> {
         match &node.node {
             Node::Let { bindings, body } => {
-                let child = Rc::new(RefCell::new(Env::with_parent(self.env.clone())));
-                let saved = std::mem::replace(&mut self.env, child);
-                let result = (|| {
-                    for (id, val_node) in bindings {
-                        let val = self.eval(val_node)?;
-                        self.env.borrow_mut().set_local(*id, val);
-                    }
-                    self.eval(body)
-                })();
-                self.env = saved;
+                let saved = self.eval_bindings_with_toplevel_frame(bindings)?;
+                let result = self.eval(body);
+                if let Some(env) = saved {
+                    self.env = env;
+                }
                 result
             }
             _ => unreachable!(),

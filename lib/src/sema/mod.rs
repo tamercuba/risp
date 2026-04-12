@@ -302,7 +302,13 @@ fn analyze_fn_arity(
     let mut child_scope = scope.enter_fn_scope();
     let (params, variadic) = analyze_fn_params(params_expr, &mut child_scope)?;
     let body = Rc::new(analyze_expr(body_expr, &child_scope)?);
-    let frame_size = frame_size(&body);
+    let params_max = params
+        .iter()
+        .chain(variadic.iter())
+        .map(|id| *id as usize + 1)
+        .max()
+        .unwrap_or(0);
+    let frame_size = frame_size(&body).max(params_max);
     Ok(FnArity {
         params,
         variadic,
